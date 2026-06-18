@@ -136,15 +136,11 @@ SchoolBiometricSystem/
 
 ## Configuration
 
-The real `appsettings.json` file is intentionally ignored by Git because it contains local settings and secrets.
-
 To run the project locally:
 
 1. Copy `appsettings.Example.json`.
 2. Rename the copy to `appsettings.json`.
 3. Fill in your own values for the SQLite connection string, QR token secret, admin/principal passwords, email SMTP settings, and check-in rules.
-
-Do not commit real passwords, email app passwords, QR secrets, database files, generated credentials, or log files.
 
 ## Running Locally
 
@@ -176,17 +172,4 @@ http://localhost:5000
 
 The app uses SQLite. The local database path is configured in `appsettings.json`.
 
-Database files such as `.db`, `.sqlite`, `.db-shm`, and `.db-wal` are ignored so real attendance data is not pushed to GitHub.
-
-## Security Notes
-
-This repository is prepared for public portfolio use:
-
-- Real `appsettings.json` is ignored
-- Local database files are ignored
-- Generated credential PDFs are ignored
-- Logs and build outputs are ignored
-- Example configuration uses placeholder values only
-
-Before sharing screenshots publicly, use demo data or hide private details such as real teacher names, phone numbers, emails, National IDs, usernames, passwords, and credential slips.
-
+The repository includes an example configuration file for setup, while local configuration, generated files, logs, and database files are excluded from source control.
