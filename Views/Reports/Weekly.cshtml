@@ -1,0 +1,139 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.WeeklyReportVM
+@{
+    ViewData["Title"] = "Weekly Report";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-calendar-week" style="margin-right:8px"></i>Weekly Report</h2>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body">
+        <form method="get" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <a asp-action="Weekly"
+               asp-route-week="@Model.PreviousWeekValue"
+               class="btn btn-ghost"
+               style="width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;padding:0;align-self:center;@(Model.IsMinimumWeek ? "pointer-events:none;opacity:.45" : "")"
+               title="Previous week">
+                <i class="ti ti-chevron-left" style="font-size:18px;line-height:1"></i>
+            </a>
+
+            <div style="min-width:170px;flex:1;display:flex;flex-direction:column;justify-content:center">
+                <label class="form-label">Select Week</label>
+                <input type="week"
+                       name="week"
+                       class="form-control"
+                       min="@Model.MinimumWeekValue"
+                       max="@Model.CurrentWeekValue"
+                       style="height:44px;line-height:44px;padding-top:0;padding-bottom:0"
+                       value="@Model.WeekInputValue"
+                       onchange="this.form.submit()" />
+            </div>
+
+            <a asp-action="Weekly"
+               asp-route-week="@Model.NextWeekValue"
+               class="btn btn-ghost"
+               style="width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;padding:0;align-self:center;@(!Model.IsCurrentWeek ? "" : "pointer-events:none;opacity:.45")"
+               title="Next week">
+                <i class="ti ti-chevron-right" style="font-size:18px;line-height:1"></i>
+            </a>
+
+            @if (!Model.IsCurrentWeek)
+            {
+                <a asp-action="Weekly"
+                   asp-route-week="@($"{DateTime.Today:yyyy}-W{System.Globalization.ISOWeek.GetWeekOfYear(DateTime.Today):D2}")"
+                   class="btn btn-outline-secondary"
+                   title="Reset to current week">
+                    Current Week
+                </a>
+            }
+        </form>
+    </div>
+</div>
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <form asp-action="DownloadWeeklyPdf" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="week" value="@Model.WeekInputValue" />
+        <button type="submit" class="btn btn-primary">
+            <i class="ti ti-file-pdf"></i> Download PDF
+        </button>
+    </form>
+    <form asp-action="DownloadWeeklyExcel" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="week" value="@Model.WeekInputValue" />
+        <button type="submit" class="btn btn-success">
+            <i class="ti ti-file-xls"></i> Download Excel
+        </button>
+    </form>
+    <button type="button"
+            class="btn btn-ghost"
+            onclick="window.open('@Url.Action("PrintWeeklyPage","Reports", new { week = Model.WeekInputValue })', '_blank')">
+        <i class="ti ti-printer"></i> Print
+    </button>
+</div>
+
+@if (Model.Records?.Count > 0)
+{
+    <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card green">
+            <div class="stat-icon"><i class="ti ti-user-check"></i></div>
+            <div class="stat-value">@Model.PresentCount</div>
+            <div class="stat-label">Present</div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div>
+            <div class="stat-value">@Model.LateCount</div>
+            <div class="stat-label">Late</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-icon"><i class="ti ti-user-x"></i></div>
+            <div class="stat-value">@Model.AbsentCount</div>
+            <div class="stat-label">Absent</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Attendance Records — @Model.WeekLabel</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table daily-report-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="nationalid-col" />
+                    <col class="department-col" />
+                    <col class="time-col" />
+                    <col class="time-col" />
+                    <col class="status-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher</th>
+                        <th scope="col">National ID</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Check-In Time</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Records)
+                {
+                    <tr>
+                        <td>@r.Teacher?.FullName</td>
+                        <td class="tmono">@r.Teacher?.NationalId</td>
+                        <td><span class="dept-tag">@r.Teacher?.Department?.Name</span></td>
+                        <td class="tmono">@r.Date.ToString("ddd dd MMM")</td>
+                        <td class="tmono">@r.CheckInDisplay</td>
+                        <td><span class="badge @(r.Status switch { AttendanceStatus.Present => "badge-present", AttendanceStatus.Late => "badge-late", _ => "badge-absent" })">@r.Status</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning"><i class="ti ti-alert-circle"></i> No attendance records for this week.</div>
+}

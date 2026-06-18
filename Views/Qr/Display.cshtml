@@ -1,0 +1,225 @@
+@{
+    Layout = null;
+    var qrUrl      = ViewBag.QrUrl as string ?? "";
+    var schoolName = ViewBag.SchoolName as string ?? "KP Attendance";
+    ViewData["Title"] = "QR Display Screen";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Display Screen - KP Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@2.47.0/tabler-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        body { min-height: 100vh; background: var(--bg-base); color: var(--text-primary); overflow: auto; }
+        .qr-display { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; background: var(--bg-base); }
+        .qr-topbar, .qr-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 28px; }
+        .qr-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .qr-brand-icon { width: 42px; height: 42px; border-radius: var(--radius-md); display: inline-grid; place-items: center; background: var(--indigo); color: #fff; font-size: 22px; flex: 0 0 auto; }
+        .qr-brand-title { font-size: 18px; font-weight: 800; line-height: 1.1; }
+        .qr-brand-sub { color: var(--text-secondary); }
+        .qr-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); }
+        .qr-stage { display: grid; place-items: center; padding: 18px; }
+        .qr-panel { width: min(92vw, 760px); display: grid; justify-items: center; gap: 24px; padding: clamp(22px, 4vw, 42px); background: rgba(19,31,53,0.86); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 30px 90px rgba(0,0,0,0.36); }
+        .qr-heading { margin: 0; font-size: clamp(32px, 5vw, 58px); line-height: 1; text-align: center; }
+        .qr-canvas-wrap { width: min(72vw, 430px); aspect-ratio: 1/1; display: grid; place-items: center; padding: 18px; background: #fff; border-radius: var(--radius-lg); }
+        #qrCanvas { width: 100%; } #qrCanvas img, #qrCanvas canvas { width: 100% !important; height: auto !important; display: block; }
+        .qr-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .qr-static-badge { font-size: 11px; font-weight: 700; color: var(--green); background: rgba(34,197,94,.12); border: 1px solid var(--green); padding: 3px 10px; border-radius: 999px; letter-spacing: .04em; }
+        @@media (max-width: 680px) {
+            .qr-topbar, .qr-footer { padding: 16px; align-items: flex-start; flex-direction: column; }
+            .qr-meta { justify-content: flex-start; }
+            .qr-panel { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-display">
+        <header class="qr-topbar">
+            <div class="qr-brand">
+                <span class="qr-brand-icon"><i class="ti ti-qrcode"></i></span>
+                <div>
+                    <div class="qr-brand-title">@schoolName</div>
+                    <div class="qr-brand-sub">Attendance System</div>
+                </div>
+            </div>
+            <div class="qr-meta">
+                <span id="displayDate">@DateTime.Now.ToString("dddd, dd MMM yyyy")</span>
+                <span id="displayClock">@DateTime.Now.ToString("hh:mm:ss tt")</span>
+            </div>
+        </header>
+
+        <main class="qr-stage">
+            <section class="qr-panel" aria-label="QR check-in display">
+                <h1 class="qr-heading">Scan to Check In</h1>
+
+                <span class="qr-static-badge"><i class="ti ti-lock" style="font-size:10px"></i> Permanent QR Code</span>
+
+                <div class="qr-canvas-wrap">
+                    <div id="qrCanvas"></div>
+                </div>
+
+                <div class="qr-actions">
+                    <!-- Download as PNG for printing -->
+                    <button type="button" class="btn btn-primary" id="downloadQr"
+                            title="Download QR code as PNG — print and place around the school">
+                        <i class="ti ti-download"></i> Download for Print
+                    </button>
+
+                    <!-- Reset token — invalidates printed QRs -->
+                    <button type="button" class="btn btn-ghost"
+                            style="color:var(--red);border:1px solid var(--red)"
+                            onclick="document.getElementById('resetModal').style.display='flex'"
+                            title="Generate a new QR code — all printed copies will stop working">
+                        <i class="ti ti-refresh"></i> Reset QR
+                    </button>
+
+                    <a asp-controller="Attendance" asp-action="Index" class="btn btn-ghost">
+                        <i class="ti ti-arrow-left"></i> Dashboard
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="qr-footer">
+            <span class="live-dot">LIVE</span>
+            <span style="font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)">
+                QR code is permanent — reset only when needed
+            </span>
+        </footer>
+    </div>
+
+    <!-- Reset QR Modal -->
+    <div id="resetModal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center">
+        <div onclick="document.getElementById('resetModal').style.display='none'"
+             style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px)"></div>
+        <div style="position:relative;background:var(--bg-card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:28px;width:100%;max-width:400px;margin:16px;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+
+            <!-- Icon -->
+            <div style="width:48px;height:48px;border-radius:50%;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                <i class="ti ti-alert-triangle" style="font-size:1.4rem;color:var(--red,#ef4444)"></i>
+            </div>
+
+            <!-- Title -->
+            <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:8px">Reset QR Code?</div>
+
+            <!-- Message -->
+            <div style="font-size:13px;color:var(--text-secondary,#94a3b8);text-align:center;line-height:1.6;margin-bottom:8px">
+                This will generate a brand new QR code.
+            </div>
+            <div style="font-size:12px;font-weight:600;color:var(--red,#ef4444);text-align:center;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px;margin-bottom:24px">
+                ⚠ All printed QR codes will immediately stop working. Teachers will need to scan the new code.
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:10px">
+                <button type="button"
+                        onclick="document.getElementById('resetModal').style.display='none'"
+                        style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border,#334155);background:none;color:var(--text,#e2e8f0);font-size:13px;font-weight:600;cursor:pointer">
+                    Cancel
+                </button>
+                <form asp-controller="Qr" asp-action="ResetQrToken" method="post" style="flex:1;margin:0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit"
+                            style="width:100%;padding:10px;border-radius:10px;border:none;background:var(--red,#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+                        <i class="ti ti-refresh"></i> Yes, Reset
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        var qrUrl = @Json.Serialize(qrUrl);
+        var schoolName = @Json.Serialize(schoolName);
+
+        function drawQr(value) {
+            if (!value) return;
+            var container = document.getElementById("qrCanvas");
+            container.innerHTML = "";
+            qrInstance = new QRCode(container, {
+                text: value,
+                width: 400,
+                height: 400,
+                colorDark: "#080d14",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        // Download QR as PNG with date stamp
+        document.getElementById("downloadQr").addEventListener("click", function () {
+            setTimeout(function () {
+                var qrCanvas = document.querySelector("#qrCanvas canvas");
+                var qrImg    = document.querySelector("#qrCanvas img");
+
+                var dateLabel = "Generated: " + new Date().toLocaleDateString("en-GB", {
+                    day: "2-digit", month: "short", year: "numeric"
+                });
+
+                // Build a new canvas with QR + date label below
+                var out = document.createElement("canvas");
+                var padding = 20;
+                var labelH  = 36;
+                var qrSize  = 400;
+                out.width  = qrSize + padding * 2;
+                out.height = qrSize + padding * 2 + labelH;
+
+                var ctx = out.getContext("2d");
+
+                // White background
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, out.width, out.height);
+
+                // Draw QR
+                function stampAndDownload(src) {
+                    var img = new Image();
+                    img.onload = function () {
+                        ctx.drawImage(img, padding, padding, qrSize, qrSize);
+
+                        // Date label
+                        ctx.fillStyle = "#1e293b";
+                        ctx.font = "bold 15px 'Plus Jakarta Sans', Arial, sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText(dateLabel, out.width / 2, qrSize + padding * 2 + 14);
+
+                        // School name
+                        ctx.fillStyle = "#64748b";
+                        ctx.font = "12px 'Plus Jakarta Sans', Arial, sans-serif";
+                        ctx.fillText(schoolName, out.width / 2, qrSize + padding * 2 + labelH - 4);
+
+                        var a = document.createElement("a");
+                        a.href = out.toDataURL("image/png");
+                        a.download = schoolName.replace(/\s+/g, "-") + "-QR-" + new Date().toISOString().slice(0,10) + ".png";
+                        a.click();
+                    };
+                    img.src = src;
+                }
+
+                if (qrCanvas) {
+                    stampAndDownload(qrCanvas.toDataURL("image/png"));
+                } else if (qrImg) {
+                    stampAndDownload(qrImg.src);
+                }
+            }, 200);
+        });
+
+        // Clock
+        setInterval(function () {
+            var now = new Date();
+            document.getElementById("displayClock").textContent =
+                now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }, 1000);
+
+        window.addEventListener("load", function () {
+            drawQr(qrUrl);
+        });
+    </script>
+</body>
+</html>

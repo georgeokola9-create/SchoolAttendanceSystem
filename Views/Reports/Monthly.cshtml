@@ -1,0 +1,150 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.MonthlyReportVM
+@{
+    ViewData["Title"] = "Monthly Report";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-calendar-month" style="margin-right:8px"></i>Monthly Report</h2>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body">
+        <form method="get" class="monthly-report-form">
+            <div style="flex:1;min-width:160px">
+                <label class="form-label">Month</label>
+                <select name="month" class="form-select" onchange="this.form.submit()">
+                    @foreach (var option in Model.MonthOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Value == Model.Month.ToString() ? "selected" : null)">@option.Text</option>
+                    }
+                </select>
+            </div>
+            <div style="width:100px">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="@Model.Year" class="form-control" min="@BiometricAttendanceSystem.Models.ViewModels.MonthlyReportVM.StartYear" max="@DateTime.Today.Year" onchange="this.form.submit()" />
+            </div>
+            @if (!Model.IsCurrentMonth)
+            {
+                <div class="monthly-report-actions">
+                    <span class="form-label monthly-report-actions-label" aria-hidden="true">Reset</span>
+                    <a asp-action="Monthly"
+                       asp-route-month="@DateTime.Today.Month"
+                       asp-route-year="@DateTime.Today.Year"
+                       class="btn btn-outline-secondary monthly-report-reset"
+                       title="Reset to current month">
+                        Reset to Current Month
+                    </a>
+                </div>
+            }
+        </form>
+    </div>
+</div>
+
+@if (Model.Summaries?.Count > 0)
+{
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <form asp-action="DownloadMonthlyPdf" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="month" value="@Model.Month" />
+            <input type="hidden" name="year" value="@Model.Year" />
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-file-pdf"></i> Download PDF
+            </button>
+        </form>
+        <form asp-action="DownloadMonthlyExcel" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="month" value="@Model.Month" />
+            <input type="hidden" name="year" value="@Model.Year" />
+            <button type="submit" class="btn btn-success">
+                <i class="ti ti-file-xls"></i> Download Excel
+            </button>
+        </form>
+        <button type="button"
+                class="btn btn-ghost"
+                onclick="window.open('@Url.Action("PrintMonthlyPage","Reports", new { month = Model.Month, year = Model.Year })', '_blank')">
+            <i class="ti ti-printer"></i> Print
+        </button>
+    </div>
+}
+
+@if (Model.Summaries?.Count > 0)
+{
+    if (Model.IsCurrentMonth)
+    {
+        <div class="card" style="margin-bottom:20px">
+            <div class="card-body" style="display:flex;flex-direction:column;gap:4px">
+                <strong>Month-to-date report</strong>
+                <span style="color:var(--text-muted, #6b7280)">
+                    Attendance percentage is calculated from working days up to today.
+                    The full-month working-day total is shown for reference.
+                </span>
+            </div>
+        </div>
+    }
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">@Model.MonthName - @Model.PeriodLabel</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table summary-report-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="department-col" />
+                    <col class="count-col" />
+                    <col class="count-col" />
+                    <col class="count-col" />
+                    <col class="working-days-col" />
+                    @if (Model.IsCurrentMonth)
+                    {
+                        <col class="working-days-col" />
+                    }
+                    <col class="percentage-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Present</th>
+                        <th scope="col">Late</th>
+                        <th scope="col">Absent</th>
+                        @if (Model.IsCurrentMonth)
+                        {
+                            <th scope="col" title="Working days counted up to today">To Date</th>
+                            <th scope="col" title="Total working days in the selected month">Month Total</th>
+                        }
+                        else
+                        {
+                            <th scope="col">Working Days</th>
+                        }
+                        <th scope="col" class="attendance-head">Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var s in Model.Summaries.OrderByDescending(x => x.AttendancePercentage))
+                {
+                    <tr>
+                        <td>@s.Teacher.FullName</td>
+                        <td><span class="dept-tag">@s.Teacher.Department?.Name</span></td>
+                        <td style="text-align:center">@s.PresentDays</td>
+                        <td style="text-align:center">@s.LateDays</td>
+                        <td style="text-align:center">@s.AbsentDays</td>
+                        <td style="text-align:center">@s.WorkingDays</td>
+                        @if (Model.IsCurrentMonth)
+                        {
+                            <td style="text-align:center">@s.FullMonthWorkingDays</td>
+                        }
+                        <td>
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <span style="font-weight:600;font-family:var(--font-mono);min-width:35px">@s.AttendancePercentage%</span>
+                                <div style="flex:1;min-width:80px;background:var(--bg-input);border-radius:20px;height:5px;overflow:hidden">
+                                    <div style="height:100%;background:@(s.AttendancePercentage >= 80 ? "#22c55e" : s.AttendancePercentage >= 60 ? "#f59e0b" : "#ef4444");width:@s.AttendancePercentage%"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

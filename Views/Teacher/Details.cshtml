@@ -1,0 +1,53 @@
+@using BiometricAttendanceSystem.Models
+@model Teacher
+@{
+    ViewData["Title"] = "Teacher Details";
+}
+
+<h2 style="margin-bottom:20px">@Model.FullName</h2>
+
+<div class="card" style="max-width:600px;margin-bottom:20px">
+    <div class="card-header">
+        <span class="card-title"><i class="ti ti-user-circle" style="margin-right:8px"></i>Teacher Information</span>
+    </div>
+    <div class="card-body">
+        <table style="width:100%;font-size:13px">
+            <tr>
+                <td style="color:var(--text-muted);padding:10px 0;font-weight:600">Full Name</td>
+                <td style="text-align:right;padding:10px 0">@Model.FullName</td>
+            </tr>
+            <tr style="border-top:0.5px solid var(--border)">
+                <td style="color:var(--text-muted);padding:10px 0;font-weight:600">National ID</td>
+                <td style="text-align:right;padding:10px 0;font-family:var(--font-mono)">@Model.NationalId</td>
+            </tr>
+            <tr style="border-top:0.5px solid var(--border)">
+                <td style="color:var(--text-muted);padding:10px 0;font-weight:600">Department</td>
+                <td style="text-align:right;padding:10px 0">@Model.Department?.Name</td>
+            </tr>
+            <tr style="border-top:0.5px solid var(--border)">
+                <td style="color:var(--text-muted);padding:10px 0;font-weight:600">Status</td>
+                <td style="text-align:right;padding:10px 0">
+                    <span class="badge @(Model.IsActive ? "badge-present" : "badge-absent")">
+                        @(Model.IsActive ? "Active" : "Inactive")
+                    </span>
+                </td>
+            </tr>
+            <tr style="border-top:0.5px solid var(--border)">
+                <td style="color:var(--text-muted);padding:10px 0;font-weight:600">Registered</td>
+                <td style="text-align:right;padding:10px 0">@Model.DateRegistered.ToString("dd MMM yyyy")</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div style="display:flex;gap:10px">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary" style="min-width:92px;justify-content:center">
+        <i class="ti ti-edit"></i> Edit
+    </a>
+    <a asp-action="History" asp-controller="Attendance" asp-route-id="@Model.Id" class="btn btn-ghost">
+        <i class="ti ti-clock-history"></i> Attendance History
+    </a>
+    <a asp-action="Index" class="btn btn-ghost">
+        <i class="ti ti-arrow-left"></i> Back
+    </a>
+</div>

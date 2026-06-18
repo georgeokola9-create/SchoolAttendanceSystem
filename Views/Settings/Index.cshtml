@@ -1,0 +1,219 @@
+@using BiometricAttendanceSystem.Models
+@model SchoolSettings
+@{
+    ViewData["Title"] = "School Settings";
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-title">School Settings</div>
+        <div class="page-sub">Configure attendance rules and school information</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
+
+    <!-- ── Left: main form ── -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-settings"></i></span>
+                Attendance Configuration
+            </span>
+        </div>
+        <div class="card-body">
+            <form asp-action="Index" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="margin-bottom:16px"></div>
+
+                <!-- School Name -->
+                <div class="form-group" style="margin-bottom:20px">
+                    <label class="form-label" title="The name displayed throughout the system">
+                        School Name
+                    </label>
+                    <input asp-for="SchoolName" class="form-control" placeholder="e.g. K.P. Senior Secondary School" />
+                    <span asp-validation-for="SchoolName" style="font-size:12px;color:var(--red);display:block;margin-top:4px"></span>
+                </div>
+
+                <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+                <!-- Time settings -->
+                <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Check-In Times</div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+                    <div class="form-group">
+                        <label class="form-label" title="Teachers who check in by this time are marked Present">
+                            Expected Check-In
+                            <i class="ti ti-info-circle" style="font-size:12px;color:var(--text-muted);margin-left:4px" title="Teachers who check in by this time are marked Present"></i>
+                        </label>
+                        <input asp-for="ExpectedCheckInTimeString" type="time" class="form-control" />
+                        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">
+                            On time → <strong style="color:var(--green)">Present</strong>
+                        </span>
+                        <span asp-validation-for="ExpectedCheckInTimeString" style="font-size:12px;color:var(--red);display:block"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" title="Teachers checking in after this time are marked Absent">
+                            Late Arrival Cutoff
+                            <i class="ti ti-info-circle" style="font-size:12px;color:var(--text-muted);margin-left:4px" title="Teachers checking in after this time are marked Absent"></i>
+                        </label>
+                        <input asp-for="LateArrivalTimeString" type="time" class="form-control" />
+                        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">
+                            After this → <strong style="color:var(--red)">Absent</strong>
+                        </span>
+                        <span asp-validation-for="LateArrivalTimeString" style="font-size:12px;color:var(--red);display:block"></span>
+                    </div>
+                </div>
+
+                <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+                <!-- Toggles -->
+                <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Check-In Options</div>
+
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+                    <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-md);transition:border-color .15s"
+                           onmouseover="this.style.borderColor='var(--indigo)'" onmouseout="this.style.borderColor='var(--border)'"
+                           title="When enabled, teachers can scan QR and check in before the expected check-in time">
+                        <input asp-for="AllowEarlyCheckIn" type="checkbox" style="width:16px;height:16px;accent-color:var(--indigo);cursor:pointer;margin-top:1px;flex-shrink:0" />
+                        <div>
+                            <div style="font-size:13px;font-weight:600">Allow early check-in</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Teachers can check in before the expected check-in time</div>
+                        </div>
+                    </label>
+
+                    <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--radius-md);transition:border-color .15s"
+                           onmouseover="this.style.borderColor='var(--indigo)'" onmouseout="this.style.borderColor='var(--border)'"
+                           title="When enabled, teachers can still check in after being marked absent — their record will update to Late">
+                        <input asp-for="AllowLateCheckIn" type="checkbox" style="width:16px;height:16px;accent-color:var(--indigo);cursor:pointer;margin-top:1px;flex-shrink:0" />
+                        <div>
+                            <div style="font-size:13px;font-weight:600">Allow late check-in after absent</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Teachers marked absent can still check in — their status updates to Late</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+                <!-- Retention -->
+                <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em">Data Retention</div>
+
+                <div class="form-group" style="margin-bottom:4px">
+                    <label class="form-label" title="Attendance records older than this number of days will be archived automatically">
+                        Record Retention Period
+                        <i class="ti ti-info-circle" style="font-size:12px;color:var(--text-muted);margin-left:4px"></i>
+                    </label>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <input asp-for="RetentionDays" type="number" class="form-control" min="30" max="3650" style="max-width:120px" />
+                        <span style="font-size:13px;color:var(--text-muted)">days</span>
+                    </div>
+                    <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">
+                        Records older than this will be archived automatically
+                    </span>
+                    <span asp-validation-for="RetentionDays" style="font-size:12px;color:var(--red);display:block;margin-top:4px"></span>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex;gap:10px;margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+                    <button type="submit" class="btn btn-primary" title="Save all settings">
+                        <i class="ti ti-check"></i> Save Settings
+                    </button>
+                    <a asp-action="Index" asp-controller="Attendance" class="btn btn-ghost" title="Discard changes and go back">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Right: sidebar info ── -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Attendance rules quick ref -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">
+                    <span class="card-title-icon"><i class="ti ti-list-check"></i></span>
+                    Attendance Rules
+                </span>
+            </div>
+            <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
+                    <span>Before expected check-in time</span>
+                    <span style="margin-left:auto;font-weight:700;color:var(--green);font-size:11px">PRESENT</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:var(--warning,#f59e0b);flex-shrink:0"></span>
+                    <span>Between check-in and cutoff</span>
+                    <span style="margin-left:auto;font-weight:700;color:var(--warning,#f59e0b);font-size:11px">LATE</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></span>
+                    <span>After late arrival cutoff</span>
+                    <span style="margin-left:auto;font-weight:700;color:var(--red);font-size:11px">ABSENT</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collapsible How It Works -->
+        <div class="card" style="overflow:hidden">
+            <button onclick="toggleHowItWorks()" id="howItWorksBtn"
+                    style="width:100%;background:none;border:none;cursor:pointer;padding:0;text-align:left">
+                <div class="card-header" style="margin:0">
+                    <span class="card-title">
+                        <span class="card-title-icon"><i class="ti ti-help-circle"></i></span>
+                        How It Works
+                    </span>
+                    <i class="ti ti-chevron-down" id="howItWorksChevron" style="margin-left:auto;color:var(--text-muted);transition:transform .2s"></i>
+                </div>
+            </button>
+            <div id="howItWorksBody" style="display:none;padding:16px;font-size:13px;color:var(--text-muted);border-top:1px solid var(--border)">
+                <div style="margin-bottom:12px;font-size:12px">
+                    <strong style="color:var(--text)">Example:</strong><br>
+                    Expected Check-In = <strong>9:00 AM</strong>, Late Arrival = <strong>10:00 AM</strong>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:12px">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:6px 8px;font-weight:600;color:var(--text)">Check-In Time</td>
+                            <td style="padding:6px 8px;font-weight:600;color:var(--text)">Status</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:6px 8px">8:45 AM</td>
+                            <td style="padding:6px 8px"><span class="badge badge-present">Present</span></td>
+                        </tr>
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:6px 8px">9:30 AM</td>
+                            <td style="padding:6px 8px"><span class="badge badge-late">Late</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding:6px 8px">10:15 AM</td>
+                            <td style="padding:6px 8px"><span class="badge badge-absent">Absent</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+<script>
+    function toggleHowItWorks() {
+        const body     = document.getElementById('howItWorksBody');
+        const chevron  = document.getElementById('howItWorksChevron');
+        const open     = body.style.display === 'block';
+        body.style.display    = open ? 'none' : 'block';
+        chevron.style.transform = open ? '' : 'rotate(180deg)';
+    }
+</script>
+}

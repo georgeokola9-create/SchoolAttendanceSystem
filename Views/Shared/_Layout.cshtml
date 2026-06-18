@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — @ViewBag.SchoolName</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- Tabler Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@2.47.0/tabler-icons.min.css" />
+
+    <!-- Our CSS -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        /* ── Mobile top bar ── */
+        .mob-topbar {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 400;
+            height: 56px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            padding: 0 14px;
+            gap: 10px;
+            /* hard background — never see-through */
+            box-shadow: 0 1px 8px rgba(0,0,0,.4);
+        }
+        .mob-hamburger {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-primary); font-size: 22px;
+            display: flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border-radius: 8px;
+            flex-shrink: 0;
+            padding: 0;
+        }
+        .mob-hamburger:hover { background: var(--bg-card); }
+
+        /* Two-line title block */
+        .mob-title-block {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            overflow: hidden;
+        }
+        .mob-school-name {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .mob-page-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mob-logout-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-muted); font-size: 20px;
+            display: flex; align-items: center;
+            padding: 6px; border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .mob-logout-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+
+        /* Dim overlay — opacity fade, no blur (blur is slow on mobile) */
+        .mob-overlay {
+            display: block;
+            position: fixed; inset: 0; z-index: 390;
+            background: rgba(0,0,0,.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .mob-overlay.open { opacity: 1; pointer-events: auto; }
+
+        /* ── Sidebar nav badge (pending count) ── */
+        .nav-badge {
+            margin-left: auto;
+            background: var(--red, #ef4444);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 7px;
+            border-radius: 999px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Mobile topbar -->
+    <div class="mob-topbar">
+        <button class="mob-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+            <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="mob-title-block">
+            <span class="mob-school-name">@ViewBag.SchoolName</span>
+            <span class="mob-page-title">@ViewData["Title"]</span>
+        </div>
+        <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="mob-logout-btn" title="Sign Out">
+                <i class="ti ti-logout"></i>
+            </button>
+        </form>
+    </div>
+    <!-- Overlay -->
+    <div class="mob-overlay" id="mobOverlay" onclick="closeSidebar()"></div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    bool isAdmin     = User.IsInRole("Administrator");
+    bool isPrincipal = User.IsInRole("Principal");
+    bool isTeacher = User.IsInRole("Teacher");
+    var  ctrl      = ViewContext.RouteData.Values["controller"]?.ToString();
+    var  action    = ViewContext.RouteData.Values["action"]?.ToString();
+
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <div class="sidebar-brand-icon">🏫</div>
+                    <div>
+                        <div class="sidebar-brand-name">@ViewBag.SchoolName</div>
+
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+
+                @* ── Main ── *@
+                <div class="nav-section-label">Main</div>
+                <a asp-controller="Attendance" asp-action="Index"
+                   class="nav-item @(ctrl == "Attendance" && action == "Index" ? "active" : "")">
+                    <span class="nav-icon"><i class="ti ti-layout-dashboard"></i></span>Dashboard
+                </a>
+                @if (isAdmin)
+                {
+                    <a asp-controller="Teacher" asp-action="Index"
+                       class="nav-item @(ctrl == "Teacher" && action == "Index" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-users"></i></span>All Teachers
+                    </a>
+                    <a asp-controller="Teacher" asp-action="Register"
+                       class="nav-item @(ctrl == "Teacher" && action == "Register" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-user-plus"></i></span>Register Teacher
+                    </a>
+                    <a asp-controller="Teacher" asp-action="Search"
+                       class="nav-item @(ctrl == "Teacher" && action == "Search" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-search"></i></span>Search Teacher
+                    </a>
+                }
+
+                @* Teacher self-service (visible to teachers only) *@
+                @if (isTeacher)
+                {
+                    <a asp-controller="Teacher" asp-action="MyAttendance"
+                       class="nav-item @(ctrl == "Teacher" && action == "MyAttendance" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-clock-history"></i></span>My Attendance
+                    </a>
+                    <a asp-controller="Qr" asp-action="RegisterDevice"
+                       class="nav-item @(ctrl == "Qr" && action is "RegisterDevice" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-device-mobile"></i></span>Register Device
+                    </a>
+                }
+
+                @* Reports — visible to Admin and Principal, hidden on mobile *@
+                @if (isAdmin || isPrincipal)
+                {
+                    <div class="nav-section-label" style="margin-top:8px">Reports</div>
+                    <a asp-controller="Reports" asp-action="Daily"
+                       class="nav-item @(action == "Daily" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-calendar-day"></i></span>Daily Report
+                    </a>
+                    <a asp-controller="Reports" asp-action="Weekly"
+                       class="nav-item @(action == "Weekly" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-calendar-week"></i></span>Weekly Report
+                    </a>
+                    <a asp-controller="Reports" asp-action="Monthly"
+                       class="nav-item @(action == "Monthly" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-calendar-month"></i></span>Monthly Report
+                    </a>
+                    <a asp-controller="Reports" asp-action="Individual"
+                       class="nav-item @(action == "Individual" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-file-analytics"></i></span>Individual Report
+                    </a>
+                    <a asp-controller="Reports" asp-action="Department"
+                       class="nav-item @(action == "Department" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-building"></i></span>Department Report
+                    </a>
+                }
+
+                @* Full admin only *@
+                @if (isAdmin)
+                {
+                    <div class="nav-section-label" style="margin-top:8px">Administration</div>
+                    <a asp-controller="Holiday" asp-action="Index"
+                       class="nav-item @(ctrl == "Holiday" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-calendar-x"></i></span>Holidays &amp; Breaks
+                    </a>
+                    <a asp-controller="Settings" asp-action="Index"
+                       class="nav-item @(ctrl == "Settings" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-settings"></i></span>School Settings
+                    </a>
+                    <a asp-controller="Departments" asp-action="Index"
+                       class="nav-item @(ctrl == "Departments" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-building"></i></span>Departments
+                    </a>
+                    <a asp-controller="Credentials" asp-action="Index"
+                       class="nav-item @(ctrl == "Credentials" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-key"></i></span>Teacher Credentials
+                    </a>
+                    <a asp-controller="Qr" asp-action="Display"
+                       class="nav-item @(ctrl == "Qr" && action == "Display" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-qrcode"></i></span>QR Display Screen
+                    </a>
+                    <a asp-controller="DeviceRequests" asp-action="Index"
+                       class="nav-item @(ctrl == "DeviceRequests" && action == "Index" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-device-mobile-rotated"></i></span>Device Re-registration
+                        <span class="nav-badge" id="pendingReregBadge" style="display:none"></span>
+                    </a>
+
+                    <div class="nav-section-label" style="margin-top:8px">Attendance Import</div>
+                    <a asp-controller="AttendanceImport" asp-action="Manual"
+                       class="nav-item @(ctrl == "AttendanceImport" && action == "Manual" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-edit"></i></span>Manual Entry
+                    </a>
+                    <a asp-controller="AttendanceImport" asp-action="Import"
+                       class="nav-item @(ctrl == "AttendanceImport" && action is "Import" or "ImportResults" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-upload"></i></span>Bulk CSV Import
+                    </a>
+
+                    <div class="nav-section-label" style="margin-top:8px">Staff Management</div>
+                    <a asp-controller="Teacher" asp-action="Index"
+                       class="nav-item @(ctrl == "Teacher" && action == "Index" ? "active" : "")"
+                       title="Remove a teacher from active staff">
+                        <span class="nav-icon"><i class="ti ti-user-minus"></i></span>Remove Teacher
+                    </a>
+                    <a asp-controller="Teacher" asp-action="FormerEmployees"
+                       class="nav-item @(action is "FormerEmployees" or "FormerDetails" ? "active" : "")">
+                        <span class="nav-icon"><i class="ti ti-archive"></i></span>Former Employees
+                    </a>
+                }
+
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="user-avatar">@(User.Identity?.Name?.Substring(0, 1).ToUpper() ?? "?")</div>
+                    <div>
+                        <div class="user-name">@User.Identity?.Name</div>
+                        <div class="user-role">@(isAdmin ? "Administrator" : isPrincipal ? "Principal" : "Teacher")</div>
+                    </div>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="nav-logout">
+                        <i class="ti ti-logout"></i> Sign Out
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+            <header class="topbar">
+                <span class="topbar-title">@ViewData["Title"]</span>
+                <span class="topbar-date">@DateTime.Now.ToString("dddd, dd MMMM yyyy")</span>
+                <span class="live-clock" id="liveClock">--:--:-- --</span>
+                <span class="live-dot" id="liveDot"><span class="dot-pulse"></span>LIVE</span>
+            </header>
+
+            <main class="page-content">
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert alert-success" data-auto-dismiss="true">
+                        <i class="ti ti-circle-check" style="font-size:16px"></i>
+                        <span class="alert-message">@TempData["Success"]</span>
+                    </div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger">
+                        <i class="ti ti-alert-circle" style="font-size:16px"></i>
+                        <span class="alert-message">@TempData["Error"]</span>
+                        <button type="button" class="alert-close" aria-label="Close message" data-dismiss-alert>&times;</button>
+                    </div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+}
+else
+{
+    @RenderBody()
+}
+
+<script src="~/js/dashboard.js" asp-append-version="true"></script>
+@if (User.Identity?.IsAuthenticated == true && User.IsInRole("Administrator"))
+{
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.0/dist/browser/signalr.min.js"></script>
+    <script>
+        (function () {
+            const badge = document.getElementById('pendingReregBadge');
+            if (!badge) return;
+
+            function setBadge(count) {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : String(count);
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // Initial load — fetch current count so the badge is correct
+            // even before any live SignalR event fires.
+            fetch('/DeviceRequests/PendingCount', { headers: { 'Accept': 'application/json' } })
+                .then(r => r.ok ? r.json() : null)
+                .then(data => { if (data) setBadge(data.count); })
+                .catch(() => { /* badge just stays hidden on failure */ });
+
+            // Live updates via the existing NotificationsHub.
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/notifications')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('PendingCountUpdated', count => setBadge(count));
+
+            connection.start().catch(() => {
+                // Connection failures are non-fatal — the badge simply won't
+                // live-update, but the initial fetch above still ran.
+            });
+        })();
+    </script>
+}
+<script>
+    document.querySelectorAll("[data-auto-dismiss='true']").forEach(alert => {
+        setTimeout(() => {
+            alert.classList.add("is-hiding");
+            setTimeout(() => alert.remove(), 250);
+        }, 4000);
+    });
+
+    document.querySelectorAll("[data-dismiss-alert]").forEach(button => {
+        button.addEventListener("click", () => {
+            const alert = button.closest(".alert");
+            if (!alert) return;
+            alert.classList.add("is-hiding");
+            setTimeout(() => alert.remove(), 250);
+        });
+    });
+</script>
+@await RenderSectionAsync("Scripts", required: false)
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('mobOverlay').classList.toggle('open');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('mobOverlay').classList.remove('open');
+    }
+    // Close sidebar when a nav item is tapped on mobile
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 820) closeSidebar();
+        });
+    });
+
+    // ── Sidebar scroll persistence ──
+    // .sidebar has overflow:hidden — the actual scrollable element is .sidebar-nav
+    (function () {
+        var KEY = 'sidebarScrollTop';
+        var nav = document.querySelector('.sidebar-nav');
+        if (!nav) return;
+
+        // Restore immediately when the page loads
+        var saved = sessionStorage.getItem(KEY);
+        if (saved) nav.scrollTop = parseInt(saved, 10);
+
+        // Save right before the page navigates away (most reliable moment)
+        window.addEventListener('beforeunload', function () {
+            sessionStorage.setItem(KEY, String(nav.scrollTop));
+        });
+    })();
+</script>
+</body>
+</html>

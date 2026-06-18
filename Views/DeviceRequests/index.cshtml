@@ -1,0 +1,166 @@
+@using BiometricAttendanceSystem.Models
+@model List<DeviceReregistrationRequest>
+@{
+    ViewData["Title"] = "Device Re-registration Requests";
+}
+
+<div class="page-header">
+    <div>
+        <div class="page-sub">Review and approve pending teacher device swap requests</div>
+    </div>
+    <a asp-controller="DeviceRequests" asp-action="History" class="btn btn-ghost btn-sm"
+        style="margin:20px 0 20px 0"
+       title="View full history of all past re-registration requests">
+        <i class="ti ti-history"></i> View History
+    </a>
+</div>
+
+@if (!Model.Any())
+{
+    <!-- Empty state -->
+    <div class="card" style="padding:64px 32px;text-align:center">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(var(--green-rgb,34,197,94),.1);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <i class="ti ti-circle-check" style="font-size:2rem;color:var(--green)"></i>
+        </div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:6px">All clear</div>
+        <div style="font-size:13px;color:var(--text-muted);max-width:320px;margin:0 auto">
+            No pending device re-registration requests. When a teacher submits one, it will appear here instantly.
+        </div>
+    </div>
+}
+else
+{
+    <!-- Summary bar -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:rgba(var(--warning-rgb,245,158,11),.08);border:1px solid rgba(var(--warning-rgb,245,158,11),.25);border-radius:var(--radius-md)">
+        <i class="ti ti-alert-triangle" style="color:var(--warning,#f59e0b);font-size:1.1rem;flex-shrink:0"></i>
+        <span style="font-size:13px;font-weight:500">
+            <strong>@Model.Count pending @(Model.Count == 1 ? "request" : "requests")</strong> awaiting review.
+            Approving will swap the teacher's registered device to the new one immediately.
+        </span>
+    </div>
+
+    <!-- Requests table -->
+    <div class="card table-card">
+        <div class="table-wrapper">
+            <table class="att-table" style="table-layout:fixed;width:100%">
+                <colgroup>
+                    <col style="width:260px" />
+                    <col style="width:130px" />
+                    <col style="width:140px" />
+                    <col style="width:160px" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Requested</th>
+                        <th>Request IP</th>
+                        <th style="text-align:right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var req in Model)
+                    {
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <div class="teacher-avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0">
+                                        @req.Teacher?.FullName[0]
+                                    </div>
+                                    <div style="min-width:0">
+                                        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@req.Teacher?.FullName</div>
+                                        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                                            <span class="dept-tag">@(req.Teacher?.Department?.Name ?? "—")</span>
+                                            <span style="font-size:11px;color:var(--text-muted)">@req.Teacher?.NationalId</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td title="Date and time this request was submitted">
+                                <div style="font-family:var(--font-mono);font-size:12px;white-space:nowrap">@req.RequestedAt.ToString("dd MMM yyyy")</div>
+                                <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">@req.RequestedAt.ToString("HH:mm")</div>
+                            </td>
+                            <td title="Verify this IP matches the teacher's expected location">
+                                <div style="font-family:var(--font-mono);font-size:12px;white-space:nowrap">@req.RequestedIp</div>
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:8px;justify-content:flex-end">
+                                    <form asp-controller="DeviceRequests" asp-action="Approve" method="post" style="margin:0">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@req.Id" />
+                                        <button type="submit" class="btn btn-sm"
+                                                style="background:var(--green);border-color:var(--green);color:#fff;display:flex;align-items:center;gap:5px"
+                                                title="Approve — swaps the teacher's device immediately">
+                                            <i class="ti ti-check"></i> Approve
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-ghost btn-sm"
+                                            style="color:var(--red);border:1px solid var(--red);display:flex;align-items:center;gap:5px"
+                                            onclick="rejectModal(@req.Id, '@req.Teacher?.FullName')"
+                                            title="Reject — teacher's current device stays unchanged">
+                                        <i class="ti ti-x"></i> Reject
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Reject Modal -->
+<div id="rejectModalWrap" style="display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center">
+    <div onclick="closeRejectModal()" style="position:absolute;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)"></div>
+    <div style="position:relative;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:420px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+
+        <!-- Modal header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="width:36px;height:36px;border-radius:50%;background:rgba(var(--red-rgb,239,68,68),.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="ti ti-x" style="color:var(--red);font-size:1rem"></i>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:14px">Reject Request</div>
+                <div id="rejectTeacherName" style="font-size:12px;color:var(--text-muted)"></div>
+            </div>
+            <button onclick="closeRejectModal()" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:16px;line-height:1" title="Close">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;padding:10px 12px;background:var(--bg-input);border-radius:var(--radius-md);border-left:3px solid var(--warning,#f59e0b)">
+            <i class="ti ti-info-circle" style="margin-right:4px"></i>
+            The teacher's current device will remain unchanged. This note is for admin records only — the teacher will not see it.
+        </div>
+
+        <form asp-controller="DeviceRequests" asp-action="Reject" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="requestId" id="rejectRequestId" />
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">
+                Reason <span style="font-weight:400">(optional)</span>
+            </label>
+            <textarea name="note" placeholder="e.g. Suspicious IP, unverified device…" rows="3"
+                      style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text);font-size:13px;resize:none;margin-bottom:16px;box-sizing:border-box"></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="background:var(--red);border-color:var(--red)">
+                    <i class="ti ti-x"></i> Confirm Reject
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function rejectModal(id, name) {
+        document.getElementById('rejectRequestId').value = id;
+        document.getElementById('rejectTeacherName').textContent = name || '';
+        document.getElementById('rejectModalWrap').style.display = 'flex';
+    }
+    function closeRejectModal() {
+        document.getElementById('rejectModalWrap').style.display = 'none';
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRejectModal(); });
+</script>
+}

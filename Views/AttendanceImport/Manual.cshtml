@@ -1,0 +1,131 @@
+@model BiometricAttendanceSystem.Controllers.ManualAttendanceVM
+@{
+    ViewData["Title"] = "Manual Attendance Entry";
+    Layout = "_Layout";
+}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; gap:1rem;">
+    <div>
+        <h4 style="margin:0 0 0.25rem 0; font-size:1.25rem; font-weight:600; color:var(--text-primary);">Manual Attendance Entry</h4>
+        <p style="margin:0; font-size:0.875rem; color:var(--text-muted);">Enter past or corrected attendance records for a specific date.</p>
+    </div>
+    <a asp-controller="AttendanceImport" asp-action="Import" class="btn btn-ghost btn-sm" style="white-space:nowrap; flex-shrink:0;">
+        ⬆ CSV Bulk Import
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success" style="margin-bottom:1rem;">✅ @TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger" style="margin-bottom:1rem;">⚠️ @TempData["Error"]</div>
+}
+
+@* Date picker card *@
+<div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-body" style="padding:1.25rem;">
+        <form method="get" style="display:flex; align-items:flex-end; gap:1rem; flex-wrap:wrap;">
+            <div class="form-group" style="margin:0; flex:0 0 auto;">
+                <label class="form-label">Select Date</label>
+                <input type="date"
+                       name="date"
+                       class="form-control"
+                       style="width:180px;"
+                       value="@Model.Date.ToString("yyyy-MM-dd")"
+                       max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="flex-shrink:0;">Load Teachers</button>
+        </form>
+    </div>
+</div>
+
+@if (Model.Teachers.Any())
+{
+    <form method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+        <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                <span class="card-title" style="margin:0;">
+                    Attendance for @Model.Date.ToString("dddd, dd MMMM yyyy")
+                </span>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3);"
+                            onclick="setAll('Present')">All Present</button>
+                    <button type="button" class="btn btn-sm" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);"
+                            onclick="setAll('Absent')">All Absent</button>
+                    <button type="button" class="btn btn-sm btn-ghost"
+                            onclick="setAll('')">Clear All</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="att-table">
+                    <thead>
+                        <tr>
+                            <th style="width:35%">Teacher</th>
+                            <th style="width:20%">Department</th>
+                            <th style="width:25%">Status</th>
+                            <th style="width:20%">Check-In Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Teachers.Count; i++)
+                        {
+                            var t = Model.Teachers[i];
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="Entries[@i].TeacherId" value="@t.Id" />
+                                    <span style="font-weight:600; color:var(--text-primary);">@t.FullName</span>
+                                    <span style="display:block; font-size:0.78rem; color:var(--text-muted); margin-top:2px;">@t.NationalId</span>
+                                </td>
+                                <td>
+                                    <span class="dept-tag">@(t.Department?.Name ?? "—")</span>
+                                </td>
+                                <td>
+                                    <select name="Entries[@i].Status"
+                                            class="form-select status-select"
+                                            style="max-width:150px; font-size:0.875rem;">
+                                        <option value="">— not set —</option>
+                                        <option value="Present">✅ Present</option>
+                                        <option value="Late">🕐 Late</option>
+                                        <option value="Absent">❌ Absent</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="time"
+                                           name="Entries[@i].CheckInTimeStr"
+                                           class="form-control"
+                                           style="max-width:130px; font-size:0.875rem;"
+                                           placeholder="HH:MM" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.875rem 1.25rem; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:0.75rem;">
+                <span style="font-size:0.8rem; color:var(--text-muted);">
+                    Only rows with a status selected will be saved. Existing records for this date will be updated.
+                </span>
+                <button type="submit" class="btn btn-primary">
+                    💾 Save Records
+                </button>
+            </div>
+        </div>
+    </form>
+}
+
+@section Scripts {
+<script>
+function setAll(status) {
+    document.querySelectorAll('.status-select').forEach(sel => {
+        sel.value = status;
+    });
+}
+</script>
+}

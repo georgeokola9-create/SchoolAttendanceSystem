@@ -1,0 +1,73 @@
+# ============================================================
+# .NET / Visual Studio standard ignores
+# ============================================================
+bin/
+obj/
+*.user
+*.suo
+desktop.ini
+.vs/
+.vscode/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Rider / JetBrains
+.idea/
+
+# ============================================================
+# Project-specific — SECRETS AND SENSITIVE DATA
+# ============================================================
+
+# Real configuration containing secrets (DB connection string,
+# QR token signing secret, email/SMTP app password).
+# Use appsettings.Example.json as the template instead.
+appsettings.json
+appsettings.Production.json
+appsettings.Development.json
+appsettings.Local.json
+
+# SQLite database files — may contain real teacher names, IDs,
+# attendance records, or other PII from testing/seeding.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Backup files created by the scheduled backup script
+*backup*.db
+AttendanceBackups/
+
+# Any local secrets/env files
+.env
+*.pfx
+*.key
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+
+# ============================================================
+# SchoolBiometricSystem — additional ignores
+# ============================================================
+
+# Seed output — contains generated credentials.pdf with real/test data
+seed-output/
+
+# Python chart cache and generated chart images
+PythonCharts/__pycache__/
+PythonCharts/*.png
+PythonCharts/*.jpg
+wwwroot/charts/

@@ -1,0 +1,127 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.TeacherHistoryVM
+@{
+    ViewData["Title"] = "Individual Report";
+    var teachers = ViewBag.Teachers as List<Teacher>;
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-user-circle" style="margin-right:8px"></i>Individual Teacher Report</h2>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body">
+        <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:220px">
+                <label class="form-label">Teacher</label>
+                <select name="teacherId" class="form-select">
+                    <option value="">-- Select Teacher --</option>
+                    @if (teachers != null)
+                    {
+                        @foreach (var t in teachers.OrderBy(x => x.FullName))
+                        {
+                            <option value="@t.Id" selected="@(Model?.Teacher?.Id == t.Id)">@t.FullName (@t.NationalId)</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">From</label>
+                <input type="date" name="from" class="form-control" value="@Model?.From.ToString("yyyy-MM-dd")" />
+            </div>
+            <div>
+                <label class="form-label">To</label>
+                <input type="date" name="to" class="form-control" value="@Model?.To.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-search"></i> Generate
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (Model?.Teacher != null)
+{
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <form asp-action="DownloadIndividualPdf" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="teacherId" value="@Model.Teacher.Id" />
+            <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-file-pdf"></i> Download PDF
+            </button>
+        </form>
+        <form asp-action="DownloadIndividualExcel" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="teacherId" value="@Model.Teacher.Id" />
+            <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+            <button type="submit" class="btn btn-success">
+                <i class="ti ti-file-xls"></i> Download Excel
+            </button>
+        </form>
+        <button type="button"
+                class="btn btn-ghost"
+                onclick="window.open('@Url.Action("PrintIndividualPage","Reports", new { teacherId = Model.Teacher.Id, from = Model.From.ToString("yyyy-MM-dd"), to = Model.To.ToString("yyyy-MM-dd") })', '_blank')">
+            <i class="ti ti-printer"></i> Print
+        </button>
+    </div>
+}
+
+@if (Model?.Teacher != null)
+{
+    <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card green">
+            <div class="stat-icon"><i class="ti ti-user-check"></i></div>
+            <div class="stat-value">@Model.PresentDays</div>
+            <div class="stat-label">Present Days</div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div>
+            <div class="stat-value">@Model.LateDays</div>
+            <div class="stat-label">Late Days</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-icon"><i class="ti ti-user-x"></i></div>
+            <div class="stat-value">@Model.AbsentDays</div>
+            <div class="stat-label">Absent Days</div>
+        </div>
+        <div class="stat-card blue">
+            <div class="stat-icon"><i class="ti ti-percentage"></i></div>
+            <div class="stat-value">@Model.AttendancePercentage%</div>
+            <div class="stat-label">Attendance Rate</div>
+            <div class="progress-wrap"><div class="progress-bar-fill" style="width:@Model.AttendancePercentage%"></div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">@Model.Teacher.FullName — Attendance History</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table history-table">
+                <colgroup>
+                    <col class="date-col" />
+                    <col class="time-col" />
+                    <col class="status-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Check-In Time</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Records.OrderByDescending(x => x.Date))
+                {
+                    <tr>
+                        <td>@r.Date.ToString("dd MMM yyyy (ddd)")</td>
+                        <td class="tmono">@r.CheckInDisplay</td>
+                        <td><span class="badge @(r.Status switch { AttendanceStatus.Present => "badge-present", AttendanceStatus.Late => "badge-late", _ => "badge-absent" })">@r.Status</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

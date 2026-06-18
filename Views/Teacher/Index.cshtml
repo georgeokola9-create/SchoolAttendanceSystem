@@ -1,0 +1,107 @@
+@using BiometricAttendanceSystem.Models
+@model List<Teacher>
+@{
+    ViewData["Title"] = "All Teachers";
+}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h2><i class="ti ti-users" style="margin-right:8px;vertical-align:-2px"></i>All Teachers</h2>
+    <a asp-action="Register" class="btn btn-primary" style="min-width:150px;justify-content:center">
+        <i class="ti ti-user-plus"></i> Register New
+    </a>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('teacherSearch')?.addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#teacherTable tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    });
+</script>
+}
+
+@if (Model?.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-list-check"></i></span>
+                Total Teachers: @Model.Count
+            </span>
+            <div class="srch-wrap" style="margin-left:auto;width:280px;min-width:280px;display:inline-flex;align-items:center">
+                <i class="ti ti-search srch-icon" style="flex-shrink:0"></i>
+                <input type="text" id="teacherSearch" class="srch" placeholder="Search name, National ID, department..."
+                       style="width:100%;min-width:0" />
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table roster-table" id="teacherTable">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="nationalid-col" />
+                    <col class="department-col" />
+                    <col class="status-col" />
+                    <col class="date-col" />
+                    <col class="action-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher Name</th>
+                        <th scope="col">National ID</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Registered</th>
+                        <th scope="col" aria-label="Actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var teacher in Model.OrderBy(t => t.FullName))
+                {
+                    <tr>
+                        <td>
+                            <div class="teacher-cell">
+                                <div class="teacher-avatar">@string.Concat(teacher.FullName.Split(' ').Select(w => w.FirstOrDefault())).Substring(0, Math.Min(2, teacher.FullName.Split(' ').Length)).ToUpper()</div>
+                                <div>
+                                    <div class="teacher-name">@teacher.FullName</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="tmono">@teacher.NationalId</td>
+                        <td><span class="dept-tag">@teacher.Department?.Name</span></td>
+                        <td>
+                            <span class="badge @(teacher.IsActive ? "badge-present" : "badge-absent")">
+                                @(teacher.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+                        <td class="tmono" style="font-size:11px">@teacher.DateRegistered.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <div class="cell-actions">
+                                <a asp-action="Details" asp-route-id="@teacher.Id" class="btn btn-ghost btn-sm" title="View">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@teacher.Id" class="btn btn-ghost btn-sm" title="Edit">
+                                    <i class="ti ti-edit"></i>
+                                </a>
+                                <a asp-action="ConfirmDeactivate" asp-route-id="@teacher.Id"
+                                   class="btn btn-ghost btn-sm" style="color:var(--red)" title="Remove Teacher">
+                                    <i class="ti ti-user-minus"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <i class="ti ti-alert-circle" style="font-size:16px;margin-right:8px"></i>
+        No teachers registered yet.
+        <a asp-action="Register" style="margin-left:8px;font-weight:600">Register first teacher →</a>
+    </div>
+}

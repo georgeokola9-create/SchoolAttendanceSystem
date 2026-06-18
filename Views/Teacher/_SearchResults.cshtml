@@ -1,0 +1,102 @@
+@using BiometricAttendanceSystem.Models.ViewModels
+@using BiometricAttendanceSystem.Models
+@model TeacherSearchVM
+
+@if (Model.Results?.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-list-check"></i></span>
+                @Model.Results.Count result@(Model.Results.Count == 1 ? "" : "s")
+                @if (!string.IsNullOrWhiteSpace(Model.Query))
+                {
+                    <span style="font-weight:400;color:var(--text-muted);margin-left:6px">
+                        for &ldquo;@Model.Query&rdquo;
+                    </span>
+                }
+            </span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table roster-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="nationalid-col" />
+                    <col class="department-col" />
+                    <col class="status-col" />
+                    <col class="date-col" />
+                    <col class="action-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher Name</th>
+                        <th scope="col">National ID</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Registered</th>
+                        <th scope="col" aria-label="Actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var teacher in Model.Results.OrderBy(t => t.FullName))
+                {
+                    var initials = string.Concat(
+                        teacher.FullName
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Take(2)
+                            .Select(w => w[0])
+                    ).ToUpper();
+
+                    <tr>
+                        <td>
+                            <div class="teacher-cell">
+                                <div class="teacher-avatar">@initials</div>
+                                <div>
+                                    <div class="teacher-name">@teacher.FullName</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="tmono">@teacher.NationalId</td>
+                        <td><span class="dept-tag">@teacher.Department?.Name</span></td>
+                        <td>
+                            <span class="badge @(teacher.IsActive ? "badge-present" : "badge-absent")">
+                                @(teacher.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </td>
+                        <td class="tmono" style="font-size:11px">
+                            @teacher.DateRegistered.ToString("dd MMM yyyy")
+                        </td>
+                        <td>
+                            <div class="cell-actions">
+                                <a asp-controller="Teacher" asp-action="Details" asp-route-id="@teacher.Id"
+                                   class="btn btn-ghost btn-sm" title="View details">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                                <a asp-controller="Teacher" asp-action="Edit" asp-route-id="@teacher.Id"
+                                   class="btn btn-ghost btn-sm" title="Edit teacher"
+                                   style="min-width:44px;justify-content:center">
+                                    <i class="ti ti-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="alert alert-warning">
+        <i class="ti ti-search-off" style="font-size:16px;margin-right:8px"></i>
+        No teachers found for &ldquo;@Model.Query&rdquo;.
+    </div>
+}
+else
+{
+    <div class="alert" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted)">
+        <i class="ti ti-keyboard" style="font-size:16px;margin-right:8px"></i>
+        Start typing to search teachers by @Model.SearchBy.
+    </div>
+}

@@ -1,0 +1,56 @@
+@using BiometricAttendanceSystem.Models
+@model Holiday
+@{
+    ViewData["Title"] = "Add Holiday";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-plus" style="margin-right:8px"></i>Add Holiday or School Break</h2>
+
+<div class="card" style="max-width:600px">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="margin-bottom:16px"></div>
+
+            <div class="form-group">
+                <label class="form-label">Holiday Name</label>
+                <input asp-for="Name" class="form-control" placeholder="e.g., Christmas Holiday" />
+                <span asp-validation-for="Name" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input asp-for="StartDate" type="date" class="form-control" />
+                    <span asp-validation-for="StartDate" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input asp-for="EndDate" type="date" class="form-control" />
+                    <span asp-validation-for="EndDate" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description (Optional)</label>
+                <textarea asp-for="Description" class="form-control" rows="3" placeholder="e.g., School closure for maintenance"></textarea>
+            </div>
+
+            <div class="alert alert-success" style="margin:20px 0;font-size:12px">
+                <i class="ti ti-info-circle" style="margin-right:6px"></i>
+                All weekdays during this period will be excluded from working day calculations.
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-check"></i> Add Holiday
+                </button>
+                <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

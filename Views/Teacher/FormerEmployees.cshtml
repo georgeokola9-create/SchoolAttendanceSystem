@@ -1,0 +1,74 @@
+@using BiometricAttendanceSystem.Models
+@model List<Teacher>
+@{
+    ViewData["Title"] = "Former Employees";
+}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h2><i class="ti ti-users-minus" style="margin-right:8px;vertical-align:-2px"></i>Former Employees</h2>
+</div>
+
+@if (Model?.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-archive"></i></span>
+                @Model.Count former employee@(Model.Count == 1 ? "" : "s") on record
+            </span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table roster-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="nationalid-col" />
+                    <col class="department-col" />
+                    <col class="date-col" />
+                    <col class="action-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher Name</th>
+                        <th scope="col">National ID</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Date Registered</th>
+                        <th scope="col" aria-label="Actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var teacher in Model.OrderBy(t => t.FullName))
+                {
+                    <tr>
+                        <td>
+                            <div class="teacher-cell">
+                                <div class="teacher-avatar" style="opacity:0.5">@string.Concat(teacher.FullName.Split(' ').Select(w => w.FirstOrDefault())).Substring(0, Math.Min(2, teacher.FullName.Split(' ').Length)).ToUpper()</div>
+                                <div>
+                                    <div class="teacher-name" style="color:var(--text-secondary)">@teacher.FullName</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">Former Employee</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="tmono">@teacher.NationalId</td>
+                        <td><span class="dept-tag">@teacher.Department?.Name</span></td>
+                        <td class="tmono" style="font-size:11px">@teacher.DateRegistered.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <div class="cell-actions">
+                                <a asp-action="FormerDetails" asp-route-id="@teacher.Id" class="btn btn-ghost btn-sm" title="View Attendance History">
+                                    <i class="ti ti-file-analytics"></i> View Records
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <i class="ti ti-info-circle" style="font-size:16px;margin-right:8px"></i>
+        No former employees on record.
+    </div>
+}

@@ -1,0 +1,255 @@
+@using BiometricAttendanceSystem.Models
+@model List<DeviceReregistrationRequest>
+@{
+    ViewData["Title"] = "Device Re-registration History";
+
+    var total    = Model.Count;
+    var approved = Model.Count(r => r.Status == ReregistrationStatus.Approved);
+    var rejected = Model.Count(r => r.Status == ReregistrationStatus.Rejected);
+    var pending  = Model.Count(r => r.Status == ReregistrationStatus.Pending);
+
+    var byTeacher = Model
+        .GroupBy(r => r.TeacherId)
+        .Select(g => new {
+            Teacher  = g.First().Teacher,
+            Total    = g.Count(),
+            Approved = g.Count(r => r.Status == ReregistrationStatus.Approved),
+            Rejected = g.Count(r => r.Status == ReregistrationStatus.Rejected),
+            Pending  = g.Count(r => r.Status == ReregistrationStatus.Pending),
+            Last     = g.Max(r => r.RequestedAt)
+        })
+        .OrderByDescending(x => x.Total)
+        .ToList();
+
+    var display = Model.OrderByDescending(r => r.RequestedAt).ToList();
+}
+
+<div class="page-header" style="margin:10px 0 20px 0">
+    <a asp-controller="DeviceRequests" asp-action="Index" class="btn btn-ghost btn-sm">
+        <i class="ti ti-arrow-left"></i> Back to Pending
+    </a>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+    <div class="card" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Total Requests</div>
+        <div style="font-size:28px;font-weight:700">@total</div>
+    </div>
+    <div class="card" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Approved</div>
+        <div style="font-size:28px;font-weight:700;color:var(--green)">@approved</div>
+    </div>
+    <div class="card" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Rejected</div>
+        <div style="font-size:28px;font-weight:700;color:var(--red)">@rejected</div>
+    </div>
+    <div class="card" style="padding:20px 24px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Pending</div>
+        <div style="font-size:28px;font-weight:700;color:var(--warning,#f59e0b)">@pending</div>
+    </div>
+</div>
+
+<!-- Per-Teacher Summary -->
+@if (byTeacher.Any())
+{
+    <div class="card table-card" style="margin-bottom:24px">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-users"></i></span>
+                Per-Teacher Summary
+            </span>
+            <a asp-controller="DeviceRequests" asp-action="DownloadSummaryPdf"
+               class="btn btn-ghost btn-sm" style="margin-left:auto;display:flex;align-items:center;gap:6px"
+               title="Download per-teacher summary as PDF" target="_blank">
+                <i class="ti ti-download"></i> Download PDF
+            </a>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table" style="table-layout:fixed;width:100%">
+                <colgroup>
+                    <col style="width:200px" />
+                    <col style="width:120px" />
+                    <col style="width:70px" />
+                    <col style="width:90px" />
+                    <col style="width:90px" />
+                    <col style="width:80px" />
+                    <col style="width:140px" />
+                    <col style="width:70px" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Department</th>
+                        <th style="text-align:center">Total</th>
+                        <th style="text-align:center">Approved</th>
+                        <th style="text-align:center">Rejected</th>
+                        <th style="text-align:center">Pending</th>
+                        <th>Last Request</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in byTeacher)
+                    {
+                        var risk = t.Total >= 5 ? "High" : t.Total >= 3 ? "Medium" : "Low";
+                        var riskColor = risk == "High" ? "var(--red)" : risk == "Medium" ? "var(--warning,#f59e0b)" : "var(--green)";
+                        <tr>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:10px">
+                                    <div class="teacher-avatar" style="flex-shrink:0">@t.Teacher?.FullName[0]</div>
+                                    <span style="font-weight:600;font-size:13px">@t.Teacher?.FullName</span>
+                                </div>
+                            </td>
+                            <td><span class="dept-tag">@(t.Teacher?.Department?.Name ?? "—")</span></td>
+                            <td style="text-align:center;font-weight:700">@t.Total</td>
+                            <td style="text-align:center;color:var(--green);font-weight:600">@t.Approved</td>
+                            <td style="text-align:center;color:var(--red);font-weight:600">@t.Rejected</td>
+                            <td style="text-align:center;color:var(--warning,#f59e0b);font-weight:600">@t.Pending</td>
+                            <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap">@t.Last.ToString("dd MMM yyyy HH:mm")</td>
+                            <td>
+                                <span style="font-size:11px;font-weight:700;color:@riskColor;padding:2px 8px;border-radius:999px;border:1px solid @riskColor;white-space:nowrap">
+                                    @risk
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Full Audit Log -->
+<div class="card table-card">
+    <div class="card-header" style="flex-wrap:wrap;gap:12px">
+        <span class="card-title">
+            <span class="card-title-icon"><i class="ti ti-history"></i></span>
+            Full Audit Log (@display.Count)
+        </span>
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <a id="downloadAuditBtn"
+               href="/DeviceRequests/DownloadAuditPdf"
+               class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:6px"
+               title="Download filtered audit log as PDF" target="_blank">
+                <i class="ti ti-download"></i> Download PDF
+            </a>
+            <input type="text" id="teacherFilter" placeholder="Search teacher…"
+                   style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text);font-size:12px;width:160px" />
+            <select id="statusFilter"
+                    style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text);font-size:12px">
+                <option value="">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+            </select>
+        </div>
+    </div>
+
+    @if (!display.Any())
+    {
+        <div style="padding:48px;text-align:center;color:var(--text-muted)">
+            <i class="ti ti-history" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
+            No records found
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table class="att-table" id="auditTable" style="table-layout:fixed;width:100%">
+                <colgroup>
+                    <col style="width:180px" />
+                    <col style="width:120px" />
+                    <col style="width:140px" />
+                    <col style="width:120px" />
+                    <col style="width:100px" />
+                    <col style="width:140px" />
+                    <col />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Department</th>
+                        <th>Requested At</th>
+                        <th>Request IP</th>
+                        <th>Status</th>
+                        <th>Reviewed At</th>
+                        <th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var req in display)
+                    {
+                        var statusColor = req.Status switch {
+                            ReregistrationStatus.Approved => "var(--green)",
+                            ReregistrationStatus.Rejected => "var(--red)",
+                            _                             => "var(--warning,#f59e0b)"
+                        };
+                        <tr data-teacher="@req.Teacher?.FullName?.ToLower()" data-status="@req.Status">
+                            <td>
+                                <div style="display:flex;align-items:center;gap:10px">
+                                    <div class="teacher-avatar" style="flex-shrink:0">@req.Teacher?.FullName[0]</div>
+                                    <span style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@req.Teacher?.FullName</span>
+                                </div>
+                            </td>
+                            <td><span class="dept-tag">@(req.Teacher?.Department?.Name ?? "—")</span></td>
+                            <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap">@req.RequestedAt.ToString("dd MMM yyyy HH:mm")</td>
+                            <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap">@req.RequestedIp</td>
+                            <td>
+                                <span style="font-size:10px;font-weight:700;color:@statusColor;padding:4px 12px;border-radius:999px;border:1px solid @statusColor;white-space:nowrap">
+                                    @req.Status
+                                </span>
+                            </td>
+                            <td style="font-family:var(--font-mono);font-size:12px;white-space:nowrap;color:var(--text-muted)">
+                                @(req.ReviewedAt.HasValue ? req.ReviewedAt.Value.ToString("dd MMM yyyy HH:mm") : "—")
+                            </td>
+                            <td style="font-size:12px;color:var(--text-muted)">
+                                @(string.IsNullOrEmpty(req.ReviewNote) ? "—" : req.ReviewNote)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    const teacherInput  = document.getElementById('teacherFilter');
+    const statusSelect  = document.getElementById('statusFilter');
+    const rows          = document.querySelectorAll('#auditTable tbody tr');
+    const downloadBtn   = document.getElementById('downloadAuditBtn');
+
+    function applyFilter() {
+        const t = teacherInput.value.toLowerCase();
+        const s = statusSelect.value.toLowerCase();
+        rows.forEach(row => {
+            const matchT = !t || (row.dataset.teacher || '').includes(t);
+            const matchS = !s || (row.dataset.status || '').toLowerCase() === s;
+            row.style.display = matchT && matchS ? '' : 'none';
+        });
+        updateDownloadLink();
+    }
+
+    function updateDownloadLink() {
+        const t = teacherInput.value.trim();
+        const s = statusSelect.value;
+        const params = new URLSearchParams();
+        if (t) params.set('teacher', t);
+        if (s) params.set('status', s);
+        const qs = params.toString();
+        downloadBtn.href = '/DeviceRequests/DownloadAuditPdf' + (qs ? '?' + qs : '');
+
+        // Update tooltip to reflect what will be downloaded
+        if (t || s) {
+            downloadBtn.title = `Download filtered results as PDF (teacher: "${t || 'any'}", status: "${s || 'any'}")`;
+        } else {
+            downloadBtn.title = 'Download full audit log as PDF';
+        }
+    }
+
+    teacherInput.addEventListener('input', applyFilter);
+    statusSelect.addEventListener('change', applyFilter);
+</script>
+}

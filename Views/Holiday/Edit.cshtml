@@ -1,0 +1,53 @@
+@using BiometricAttendanceSystem.Models
+@model Holiday
+@{
+    ViewData["Title"] = "Edit Holiday";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-edit" style="margin-right:8px"></i>Edit Holiday</h2>
+
+<div class="card" style="max-width:600px">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="margin-bottom:16px"></div>
+
+            <div class="form-group">
+                <label class="form-label">Holiday Name</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input asp-for="StartDate" type="date" class="form-control" />
+                    <span asp-validation-for="StartDate" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input asp-for="EndDate" type="date" class="form-control" />
+                    <span asp-validation-for="EndDate" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description (Optional)</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-check"></i> Save Changes
+                </button>
+                <a asp-action="Index" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

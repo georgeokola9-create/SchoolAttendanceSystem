@@ -1,0 +1,124 @@
+@model List<BiometricAttendanceSystem.Controllers.CsvImportResult>
+@{
+    ViewData["Title"] = "Import Results";
+    Layout = "_Layout";
+    var successCount = Model.Count(r => r.Success);
+    var failCount    = Model.Count(r => !r.Success);
+    var updateCount  = Model.Count(r => r.Success && r.WasUpdate);
+    var newCount     = Model.Count(r => r.Success && !r.WasUpdate);
+}
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap;">
+    <div>
+        <h4 style="margin:0 0 0.25rem 0; font-size:1.25rem; font-weight:600; color:var(--text-primary);">Import Results</h4>
+        <p style="margin:0; font-size:0.875rem; color:var(--text-muted);">Review the outcome of your CSV import below.</p>
+    </div>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; flex-shrink:0;">
+        <a asp-controller="AttendanceImport" asp-action="Import" class="btn btn-primary btn-sm">
+            ⬆ Import Another File
+        </a>
+        <a asp-controller="AttendanceImport" asp-action="Manual" class="btn btn-ghost btn-sm">
+            ✏️ Manual Entry
+        </a>
+    </div>
+</div>
+
+<style>
+    @@media (max-width: 640px) {
+        .results-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+</style>
+
+@* Summary stat cards *@
+<div class="results-stat-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.25rem;">
+    <div class="stat-card green">
+        <div class="stat-value">@successCount</div>
+        <div class="stat-label">Records Saved</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-value">@newCount</div>
+        <div class="stat-label">New</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-value">@updateCount</div>
+        <div class="stat-label">Updated</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-value">@failCount</div>
+        <div class="stat-label">Failed</div>
+    </div>
+</div>
+
+@if (failCount > 0)
+{
+    <div class="alert alert-warning" style="margin-bottom:1rem;">
+        ⚠️ @failCount row(s) failed. Fix the errors below and re-import just those rows.
+    </div>
+}
+
+@* Row-by-row results table *@
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Row-by-Row Results</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="att-table">
+            <thead>
+                <tr>
+                    <th style="width:60px;">Row</th>
+                    <th>Teacher</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr style="@(!r.Success ? "background:rgba(239,68,68,0.08);" : "")">
+                        <td style="color:var(--text-muted); font-size:0.8rem;">@r.Line</td>
+                        <td style="font-weight:@(r.Success ? "500" : "400"); color:@(r.Success ? "var(--text-primary)" : "var(--text-muted)");">
+                            @(r.Success ? r.TeacherName : r.RawLine)
+                        </td>
+                        <td style="color:var(--text-muted); font-size:0.875rem;">@r.Date</td>
+                        <td>
+                            @if (r.Success)
+                            {
+                                var badgeClass = r.Status == "Present" ? "badge-present"
+                                              : r.Status == "Late"    ? "badge-late"
+                                                                       : "badge-absent";
+                                <span class="@badgeClass">@r.Status</span>
+                            }
+                        </td>
+                        <td>
+                            @if (r.Success)
+                            {
+                                if (r.WasUpdate)
+                                {
+                                    <span class="badge-pending">Updated</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-present" style="background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">New</span>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (r.Success)
+                            {
+                                <span style="color:#4ade80; font-size:0.875rem;">✅ Saved</span>
+                            }
+                            else
+                            {
+                                <span style="color:#f87171; font-size:0.875rem;">❌ @r.Error</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+

@@ -1,0 +1,465 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.AttendanceDashboardVM
+@{
+    ViewData["Title"] = "Dashboard";
+    var charts       = ViewBag.Charts as BiometricAttendanceSystem.Services.ChartResultVM;
+    bool pastAbsent  = ViewBag.PastAbsentThreshold == true;
+    var absentCutoff = ViewBag.AbsentThresholdDisplay as string ?? "10:00 AM";
+    var earliestDate = ViewBag.EarliestDate as string ?? DateTime.Today.ToString("yyyy-MM-dd");
+
+    // Build week options from earliest date to current week
+    var weekOptions   = new List<(int offset, string label)>();
+    var thisMonday    = DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7));
+    var earliestDt    = DateTime.TryParse(earliestDate, out var ep) ? ep : DateTime.Today;
+    var earliestMonday = earliestDt.AddDays(-(((int)earliestDt.DayOfWeek + 6) % 7));
+    var maxOffset     = (int)Math.Floor((thisMonday - earliestMonday).TotalDays / 7);
+    for (var w = 0; w <= maxOffset; w++)
+    {
+        var weekStart = thisMonday.AddDays(-7 * w);
+        var label = w == 0 ? "This Week"
+                  : w == 1 ? "Last Week"
+                  : $"{weekStart:dd MMM} – {weekStart.AddDays(4):dd MMM yyyy}";
+        weekOptions.Add((w, label));
+    }
+
+    // Build month options from earliest date to current month
+    var monthOptions = new List<(int month, int year, string label)>();
+    var cursor = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    var stop   = new DateTime(earliestDt.Year, earliestDt.Month, 1);
+    while (cursor >= stop)
+    {
+        monthOptions.Add((cursor.Month, cursor.Year, cursor.ToString("MMMM yyyy")));
+        cursor = cursor.AddMonths(-1);
+    }
+}
+
+<style>
+    .chart-wrapper {
+        position: relative;
+    }
+    .chart-download-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s ease, background 0.15s ease;
+        z-index: 2;
+        text-decoration: none;
+    }
+    .chart-wrapper:hover .chart-download-btn {
+        opacity: 1;
+    }
+    .chart-download-btn:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+    }
+    .chart-download-btn .tooltip-text {
+        position: absolute;
+        bottom: 38px;
+        right: 0;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.1s ease;
+    }
+    .chart-download-btn:hover .tooltip-text {
+        opacity: 1;
+    }
+</style>
+
+@{
+    var pendingSvc = Context.RequestServices.GetService<BiometricAttendanceSystem.Services.IDeviceReregistrationService>();
+    var pendingReregCount = pendingSvc != null ? await pendingSvc.GetPendingCountAsync() : 0;
+}
+
+<!-- PENDING DEVICE RE-REGISTRATION BANNER -->
+<div id="pendingReregBanner"
+     style="display:@(pendingReregCount > 0 ? "flex" : "none");margin-bottom:16px;padding:14px 18px;background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.4);border-radius:var(--radius-md);align-items:center;gap:12px">
+    <i class="ti ti-device-mobile-exclamation" style="font-size:1.3rem;color:var(--warning,#f59e0b);flex-shrink:0"></i>
+    <div style="flex:1;min-width:0">
+        <span id="pendingReregText" style="font-size:13px;font-weight:600">
+            @(pendingReregCount == 1
+                ? "1 device re-registration request is pending admin review."
+                : $"{pendingReregCount} device re-registration requests are pending admin review.")
+        </span>
+    </div>
+    <a asp-controller="DeviceRequests" asp-action="Index"
+       style="flex-shrink:0;font-size:12px;font-weight:700;color:var(--warning,#f59e0b);text-decoration:none;border:1px solid var(--warning,#f59e0b);padding:5px 12px;border-radius:var(--radius-md);white-space:nowrap"
+       title="Go to Device Requests page">
+        Review Now <i class="ti ti-arrow-right" style="font-size:11px"></i>
+    </a>
+    <button onclick="document.getElementById('pendingReregBanner').style.display='none'"
+            style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px;font-size:14px;flex-shrink:0;line-height:1"
+            title="Dismiss">
+        <i class="ti ti-x"></i>
+    </button>
+</div>
+
+<!-- STAT CARDS -->
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-icon"><i class="ti ti-user-check"></i></div>
+        <div class="stat-value" id="statPresent">@Model.PresentCount</div>
+        <div class="stat-label">Present Today</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div>
+        <div class="stat-value" id="statLate">@Model.LateCount</div>
+        <div class="stat-label">Late Arrivals</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-icon"><i class="ti ti-user-x"></i></div>
+        <div class="stat-value" id="statAbsent">@Model.AbsentCount</div>
+        <div class="stat-label" id="statAbsentLabel">@(pastAbsent ? "Absent Today" : $"Absent (after {absentCutoff})")</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-icon"><i class="ti ti-percentage"></i></div>
+        <div class="stat-value" id="statPercentage">@Model.AttendancePercentage%</div>
+        <div class="stat-label">Attendance Rate</div>
+        <div class="progress-wrap">
+            <div class="progress-bar-fill" id="attendanceBar" style="width:@Model.AttendancePercentage%"></div>
+        </div>
+    </div>
+</div>
+
+@if (!pastAbsent)
+{
+    <div class="alert alert-warning" style="margin-bottom:20px">
+        <i class="ti ti-info-circle" style="font-size:16px"></i>
+        Teachers not yet checked in are shown as <strong>Not yet in</strong>. Absent status is confirmed after @absentCutoff.
+    </div>
+}
+
+
+<!-- CHARTS ROW 1 -->
+<div class="dashboard-grid" style="margin-bottom:20px">
+
+    <!-- Weekly Bar Chart -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-chart-bar"></i></span>
+                Weekly Attendance
+            </span>
+            <select id="weekSelect" class="form-select" style="width:auto;min-height:32px;font-size:12px;padding:4px 8px">
+                @foreach (var (offset, label) in weekOptions)
+                {
+                    <option value="@offset">@label</option>
+                }
+            </select>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrapper">
+                @if (charts?.Success == true)
+                {
+                    <img id="weeklyBarImg" src="@charts.WeeklyBarUrl" class="chart-img" alt="Weekly attendance bar chart" />
+                }
+                else
+                {
+                    <div class="chart-placeholder" id="weeklyBarImg"><i class="ti ti-chart-bar"></i> Generating chart...</div>
+                }
+                <a href="#" class="chart-download-btn" onclick="downloadChart('weeklyBarImg', 'weekly_attendance.png'); return false;">
+                    <i class="ti ti-download" style="font-size:15px"></i>
+                    <span class="tooltip-text">Download</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pie Chart with date picker -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-chart-donut"></i></span>
+                Daily Split
+            </span>
+            <input type="date" id="pieDatePicker" class="form-control"
+                   style="width:auto;min-height:32px;font-size:12px;padding:4px 8px"
+                   value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                   min="@earliestDate"
+                   max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="card-body" style="display:flex;justify-content:center">
+            <div class="chart-wrapper" style="width:100%;max-width:320px">
+                @if (charts?.Success == true)
+                {
+                    <img id="pieImg" src="@charts.PieUrl" class="chart-img" alt="Daily attendance pie chart" />
+                }
+                else
+                {
+                    <div class="chart-placeholder" id="pieImg"><i class="ti ti-chart-donut"></i> Generating chart...</div>
+                }
+                <a href="#" class="chart-download-btn" onclick="downloadChart('pieImg', 'daily_split.png'); return false;">
+                    <i class="ti ti-download" style="font-size:15px"></i>
+                    <span class="tooltip-text">Download</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHARTS ROW 2 -->
+<div class="dashboard-grid" style="margin-bottom:24px">
+
+    <!-- Department Bar Chart -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-building"></i></span>
+                By Department
+            </span>
+            <select id="deptMonthSelect" class="form-select" style="width:auto;min-height:32px;font-size:12px;padding:4px 8px">
+                @foreach (var (m, y, label) in monthOptions)
+                {
+                    <option value="@m-@y" selected="@(m == DateTime.Today.Month && y == DateTime.Today.Year ? "selected" : null)">@label</option>
+                }
+            </select>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrapper">
+                @if (charts?.Success == true)
+                {
+                    <img id="deptBarImg" src="@charts.DeptBarUrl" class="chart-img" alt="Department attendance chart" />
+                }
+                else
+                {
+                    <div class="chart-placeholder" id="deptBarImg">Loading...</div>
+                }
+                <a href="#" class="chart-download-btn" onclick="downloadChart('deptBarImg', 'department_attendance.png'); return false;">
+                    <i class="ti ti-download" style="font-size:15px"></i>
+                    <span class="tooltip-text">Download</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trend Line Chart -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <span class="card-title-icon"><i class="ti ti-trending-up"></i></span>
+                Attendance Trend
+            </span>
+            <select id="trendSelect" class="form-select" style="width:auto;min-height:32px;font-size:12px;padding:4px 8px">
+                <option value="4" selected="selected">Last 4 Weeks</option>
+                <option value="8">Last 8 Weeks</option>
+                <option value="12">Last 12 Weeks</option>
+            </select>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrapper">
+                @if (charts?.Success == true)
+                {
+                    <img id="trendLineImg" src="@charts.TrendLineUrl" class="chart-img" alt="Attendance trend" />
+                }
+                else
+                {
+                    <div class="chart-placeholder" id="trendLineImg">Loading...</div>
+                }
+                <a href="#" class="chart-download-btn" onclick="downloadChart('trendLineImg', 'attendance_trend.png'); return false;">
+                    <i class="ti ti-download" style="font-size:15px"></i>
+                    <span class="tooltip-text">Download</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LIVE TABLE -->
+<div class="card table-card">
+    <div class="card-header">
+        <span class="card-title">
+            <span class="card-title-icon"><i class="ti ti-list-check"></i></span>
+            Live Attendance — @Model.Date.ToString("dd MMMM yyyy")
+        </span>
+        <span style="font-size:12px;color:var(--text-muted)">Auto-refreshes every 30s</span>
+    </div>
+
+    <div class="filters-bar">
+        <div class="srch-wrap">
+            <i class="ti ti-search srch-icon"></i>
+            <input type="text" id="tableSearch" class="srch" placeholder="Search teacher, National ID, department..." />
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="att-table live-attendance-table">
+            <colgroup>
+                <col class="teacher-col" />
+                <col class="department-col" />
+                <col class="time-col" />
+                <col class="status-col" />
+                <col class="action-col" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th scope="col">Teacher</th>
+                    <th scope="col">Department</th>
+                    <th scope="col">Check-In Time</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" aria-label="Actions"></th>
+                </tr>
+            </thead>
+            <tbody id="attTableBody">
+            @foreach (var r in Model.Records)
+            {
+                var initials   = string.Concat(r.Teacher!.FullName.Split(' ').Select(w => w.FirstOrDefault().ToString())).Substring(0, Math.Min(2, r.Teacher.FullName.Split(' ').Length)).ToUpper();
+                var badgeClass = (r.Status == AttendanceStatus.Absent && !pastAbsent) ? "badge-pending" : r.Status switch { AttendanceStatus.Present => "badge-present", AttendanceStatus.Late => "badge-late", AttendanceStatus.Absent => "badge-absent", _ => "badge-pending" };
+                var badgeLabel = (r.Status == AttendanceStatus.Absent && !pastAbsent) ? "Not yet in" : r.Status.ToString();
+                <tr>
+                    <td>
+                        <div class="teacher-cell">
+                            <div class="teacher-avatar">@initials</div>
+                            <div>
+                                <div class="teacher-name">@r.Teacher.FullName</div>
+                                <div class="teacher-tsc">@r.Teacher.NationalId</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="dept-tag">@r.Teacher.Department?.Name</span></td>
+                    <td class="time-cell">@r.CheckInDisplay</td>
+                    <td><span class="badge @badgeClass">@badgeLabel</span></td>
+                    <td>
+                        <a asp-action="History" asp-controller="Attendance" asp-route-id="@r.TeacherId" class="btn btn-ghost btn-sm">
+                            <i class="ti ti-clock-history"></i> History
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function downloadChart(imgId, filename) {
+        const el = document.getElementById(imgId);
+        if (!el || el.tagName !== 'IMG') return;
+        fetch(el.src)
+            .then(r => r.blob())
+            .then(blob => {
+                const url  = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href     = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            })
+            .catch(err => console.error('Download failed:', err));
+    }
+
+    function setChartLoading(imgId) {
+        const el = document.getElementById(imgId);
+        if (el) el.style.opacity = '0.4';
+    }
+
+    function setChartLoaded(imgId, url) {
+        const el = document.getElementById(imgId);
+        if (!el) return;
+        if (el.tagName === 'IMG') {
+            el.src = url;
+            el.style.opacity = '1';
+        } else {
+            const img     = document.createElement('img');
+            img.id        = imgId;
+            img.src       = url;
+            img.className = 'chart-img';
+            img.style.opacity = '1';
+            el.replaceWith(img);
+        }
+    }
+
+    function getCurrentParams() {
+        const weekOffset = document.getElementById('weekSelect')?.value ?? '0';
+        const deptVal    = document.getElementById('deptMonthSelect')?.value ?? '';
+        const trendWeeks = document.getElementById('trendSelect')?.value ?? '4';
+        const pieDate    = document.getElementById('pieDatePicker')?.value ?? '';
+        const parts      = deptVal.split('-');
+        const month      = parts[0] ?? (new Date().getMonth() + 1);
+        const year       = parts[1] ?? new Date().getFullYear();
+        return { weekOffset, month, year, trendWeeks, pieDate };
+    }
+
+    function refreshCharts(changedChart) {
+        const { weekOffset, month, year, trendWeeks, pieDate } = getCurrentParams();
+        const url = `/Attendance/ChartData?weekOffset=${weekOffset}&month=${month}&year=${year}&trendWeeks=${trendWeeks}&pieDate=${encodeURIComponent(pieDate)}`;
+
+        if (changedChart === 'week')  setChartLoading('weeklyBarImg');
+        if (changedChart === 'pie')   setChartLoading('pieImg');
+        if (changedChart === 'dept')  setChartLoading('deptBarImg');
+        if (changedChart === 'trend') setChartLoading('trendLineImg');
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { console.error('Chart error:', data.error); return; }
+                if (changedChart === 'week')  setChartLoaded('weeklyBarImg', data.weeklyBarUrl);
+                if (changedChart === 'pie')   setChartLoaded('pieImg',       data.pieUrl);
+                if (changedChart === 'dept')  setChartLoaded('deptBarImg',   data.deptBarUrl);
+                if (changedChart === 'trend') setChartLoaded('trendLineImg', data.trendLineUrl);
+            })
+            .catch(err => console.error('Chart fetch failed:', err));
+    }
+
+    document.getElementById('weekSelect')
+        ?.addEventListener('change', () => refreshCharts('week'));
+    document.getElementById('pieDatePicker')
+        ?.addEventListener('change', () => refreshCharts('pie'));
+    document.getElementById('deptMonthSelect')
+        ?.addEventListener('change', () => refreshCharts('dept'));
+    document.getElementById('trendSelect')
+        ?.addEventListener('change', () => refreshCharts('trend'));
+
+    // ── Live pending re-registration banner via SignalR ──────────────────
+    (function () {
+        const banner = document.getElementById('pendingReregBanner');
+        const text   = document.getElementById('pendingReregText');
+        if (!banner || !text) return;
+
+        // Track if admin manually dismissed the banner this session
+        let dismissed = false;
+        banner.querySelector('button').addEventListener('click', () => { dismissed = true; });
+
+        if (typeof signalR === 'undefined') return;
+
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/notifications')
+            .withAutomaticReconnect()
+            .build();
+
+        conn.on('PendingCountUpdated', function (count) {
+            if (count > 0 && !dismissed) {
+                text.textContent = count === 1
+                    ? '1 device re-registration request is pending admin review.'
+                    : `${count} device re-registration requests are pending admin review.`;
+                banner.style.display = 'flex';
+                dismissed = false;
+            } else {
+                banner.style.display = 'none';
+            }
+        });
+
+        conn.start().catch(err => console.warn('SignalR (dashboard banner):', err));
+    })();
+</script>
+}

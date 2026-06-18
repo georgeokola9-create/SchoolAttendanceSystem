@@ -1,0 +1,166 @@
+@model BiometricAttendanceSystem.Models.ViewModels.LoginVM
+@{
+    Layout = null;
+    ViewData["Title"] = "Login";
+    var returnUrl = ViewBag.ReturnUrl as string ?? "";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — @ViewBag.SchoolName</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.09);
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .brand { text-align: center; margin-bottom: 1.75rem; }
+        .brand-icon { font-size: 2.5rem; }
+        .brand h1 { font-size: 1.3rem; font-weight: 700; color: #0f172a; margin-top: 0.5rem; }
+        .brand p  { font-size: 0.85rem; color: #64748b; margin-top: 0.2rem; }
+
+        .error-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 0.6rem;
+            padding: 0.75rem 1rem;
+            color: #dc2626;
+            font-size: 0.88rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .field { margin-bottom: 1.1rem; }
+
+        label {
+            display: block;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.35rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.55rem;
+            font-size: 0.95rem;
+            color: #0f172a;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #374151;
+            margin-bottom: 1.25rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: #2563eb;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 0.55rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover  { background: #1d4ed8; }
+        .btn:active { background: #1e40af; }
+
+        .pw-wrap { position: relative; display: block; }
+        .pw-wrap input { padding-right: 2.8rem; width: 100%; box-sizing: border-box; }
+        .pw-toggle {
+            position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; padding: 0;
+            color: #94a3b8; font-size: 1.1rem; line-height: 1;
+            display: flex; align-items: center;
+        }
+        .pw-toggle:hover { color: #475569; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="brand">
+        <div class="brand-icon">📋</div>
+        <h1>@ViewBag.SchoolName</h1>
+        <p>Sign in to continue</p>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ViewBag.Error as string))
+    {
+        <div class="error-box">@ViewBag.Error</div>
+    }
+
+    <form method="post" asp-action="Login" asp-controller="Account">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+        <div class="field">
+            <label asp-for="Username">Username</label>
+            <input asp-for="Username" type="text" autocomplete="username" autofocus />
+            <span asp-validation-for="Username" class="text-danger" style="font-size:.8rem"></span>
+        </div>
+
+        <div class="field">
+            <label asp-for="Password">Password</label>
+            <div class="pw-wrap">
+                <input asp-for="Password" type="password" autocomplete="current-password" id="passwordInput" />
+                <button type="button" class="pw-toggle" onclick="togglePw('passwordInput', this)" tabindex="-1" aria-label="Toggle password visibility">&#x1F441;</button>
+            </div>
+            <span asp-validation-for="Password" class="text-danger" style="font-size:.8rem"></span>
+        </div>
+
+        <div class="remember">
+            <input asp-for="RememberMe" type="checkbox" id="rememberMe" />
+            <label for="rememberMe" style="margin:0">Remember me for 30 days</label>
+        </div>
+
+        <button type="submit" class="btn">Sign In</button>
+    </form>
+</div>
+
+<script>
+    function togglePw(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.innerHTML = show ? '<span style="text-decoration:line-through">&#x1F441;</span>' : '&#x1F441;';
+    }
+</script>
+</body>
+</html>

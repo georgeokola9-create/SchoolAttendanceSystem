@@ -1,0 +1,107 @@
+@using BiometricAttendanceSystem.Models.ViewModels
+@model TeacherSearchVM
+@{
+    ViewData["Title"] = "Search Teacher";
+}
+
+<h2 style="margin-bottom:20px">
+    <i class="ti ti-search" style="margin-right:8px;vertical-align:-2px"></i>Search Teacher
+</h2>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+        <span class="card-title">
+            <span class="card-title-icon"><i class="ti ti-filter"></i></span>
+            Find a Teacher
+        </span>
+    </div>
+    <div style="padding:16px 20px">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px;position:relative">
+                <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none"></i>
+                <input id="searchInput"
+                       type="text"
+                       class="form-control"
+                       placeholder="Type to search…"
+                       value="@Model.Query"
+                       autocomplete="off"
+                       style="padding-left:34px" />
+            </div>
+            <select id="searchBy" class="form-control" style="width:160px;flex:0 0 160px">
+                @if (Model.SearchBy == "name")
+                {
+                    <option value="name" selected>By Name</option>
+                }
+                else
+                {
+                    <option value="name">By Name</option>
+                }
+
+                @if (Model.SearchBy == "nationalid")
+                {
+                    <option value="nationalid" selected>By National ID</option>
+                }
+                else
+                {
+                    <option value="nationalid">By National ID</option>
+                }
+            </select>
+            <button id="clearBtn" class="btn btn-ghost btn-sm" type="button" style="white-space:nowrap;display:@(string.IsNullOrWhiteSpace(Model.Query) ? "none" : "flex")">
+                <i class="ti ti-x"></i> Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+@* Results container *@
+<div id="searchResults">
+    @await Html.PartialAsync("_SearchResults", Model)
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    const input    = document.getElementById('searchInput');
+    const select   = document.getElementById('searchBy');
+    const clearBtn = document.getElementById('clearBtn');
+    const results  = document.getElementById('searchResults');
+    let debounce = null;
+
+    function search() {
+        const query = input.value.trim();
+        const searchBy = select.value;
+
+        // Show/hide clear button
+        clearBtn.style.display = query.length > 0 ? 'flex' : 'none';
+
+        clearTimeout(debounce);
+        debounce = setTimeout(async () => {
+            try {
+                results.style.opacity = '0.5';
+                const url = `/Teacher/SearchPartial?query=${encodeURIComponent(query)}&searchBy=${encodeURIComponent(searchBy)}`;
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('Request failed');
+                results.innerHTML = await res.text();
+                results.style.opacity = '1';
+            } catch {
+                results.style.opacity = '1';
+            }
+        }, 280);
+    }
+
+    input.addEventListener('input', search);
+    select.addEventListener('change', search);
+
+    clearBtn.addEventListener('click', function () {
+        input.value = '';
+        search();
+        input.focus();
+    });
+
+    // Run on load if there's a pre-filled query
+    if (input.value.trim().length > 0) search();
+})();
+</script>
+}

@@ -1,0 +1,123 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.DepartmentReportVM
+@{
+    ViewData["Title"] = "Department Report";
+    var depts = ViewBag.Departments as List<Department>;
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-building" style="margin-right:8px"></i>Department Report</h2>
+
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body">
+        <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:200px">
+                <label class="form-label">Department</label>
+                <select name="deptId" class="form-select">
+                    <option value="">-- Select Department --</option>
+                    @if (depts != null)
+                    {
+                        @foreach (var d in depts.OrderBy(x => x.Name))
+                        {
+                            <option value="@d.Id" selected="@(Model?.Department?.Id == d.Id)">@d.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label">From</label>
+                <input type="date" name="from" class="form-control" value="@Model?.From.ToString("yyyy-MM-dd")" />
+            </div>
+            <div>
+                <label class="form-label">To</label>
+                <input type="date" name="to" class="form-control" value="@Model?.To.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-search"></i> Generate
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (Model?.Department != null && Model.Summaries?.Count > 0)
+{
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+        <form asp-action="DownloadDepartmentPdf" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="deptId" value="@Model.Department.Id" />
+            <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-file-pdf"></i> Download PDF
+            </button>
+        </form>
+        <form asp-action="DownloadDepartmentExcel" method="post" style="display:inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="deptId" value="@Model.Department.Id" />
+            <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+            <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+            <button type="submit" class="btn btn-success">
+                <i class="ti ti-file-xls"></i> Download Excel
+            </button>
+        </form>
+        <button type="button"
+                class="btn btn-ghost"
+                onclick="window.open('@Url.Action("PrintDepartmentPage","Reports", new { deptId = Model.Department.Id, from = Model.From.ToString("yyyy-MM-dd"), to = Model.To.ToString("yyyy-MM-dd") })', '_blank')">
+            <i class="ti ti-printer"></i> Print
+        </button>
+    </div>
+}
+
+@if (Model?.Department != null && Model.Summaries?.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">@Model.Department.Name Department — @Model.From.ToString("dd MMM yyyy") to @Model.To.ToString("dd MMM yyyy")</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table department-report-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="count-col" />
+                    <col class="count-col" />
+                    <col class="count-col" />
+                    <col class="working-days-col" />
+                    <col class="percentage-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher</th>
+                        <th scope="col">Present</th>
+                        <th scope="col">Late</th>
+                        <th scope="col">Absent</th>
+                        <th scope="col">Working Days</th>
+                        <th scope="col">Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var s in Model.Summaries.OrderByDescending(x => x.AttendancePercentage))
+                {
+                    <tr>
+                        <td>@s.Teacher.FullName</td>
+                        <td>@s.PresentDays</td>
+                        <td>@s.LateDays</td>
+                        <td>@s.AbsentDays</td>
+                        <td>@s.WorkingDays</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <span>@s.AttendancePercentage%</span>
+                                <div style="flex:1;min-width:100px;background:var(--bg-input);border-radius:20px;height:5px;overflow:hidden">
+                                    <div style="height:100%;background:@(s.AttendancePercentage >= 80 ? "#22c55e" : s.AttendancePercentage >= 60 ? "#f59e0b" : "#ef4444");width:@s.AttendancePercentage%"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else if (Model?.Department != null)
+{
+    <div class="alert alert-warning"><i class="ti ti-alert-circle"></i> No attendance data found for this department.</div>
+}

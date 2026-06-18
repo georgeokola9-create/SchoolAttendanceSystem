@@ -1,0 +1,65 @@
+@model BiometricAttendanceSystem.Models.ViewModels.RegisterDevicePromptVM
+@{
+    Layout = null;
+    ViewData["Title"] = "Register Device";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register Device — @ViewBag.SchoolName</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .card {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 36px 28px;
+            text-align: center;
+            box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .icon { font-size: 56px; margin-bottom: 16px; }
+        .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 10px; }
+        .message { font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 28px; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            border: none;
+        }
+        .btn-primary { background: #2563eb; color: #fff; margin-bottom: 10px; }
+        .btn-ghost   { background: #f1f5f9; color: #475569; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">📱</div>
+        <div class="title">Device Not Registered</div>
+        <div class="message">@Model.Message</div>
+        <a href="/Account/Login?returnUrl=@Uri.EscapeDataString("/Qr/CheckIn?token=" + Model.Token)" class="btn btn-primary">
+            Log In to Register
+        </a>
+        <a href="/Teacher/MyAttendance" class="btn btn-ghost">My Attendance</a>
+    </div>
+</body>
+</html>

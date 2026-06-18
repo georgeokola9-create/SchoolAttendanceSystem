@@ -1,0 +1,151 @@
+@model BiometricAttendanceSystem.Models.ViewModels.TeacherRegisterVM
+@{
+    ViewData["Title"] = "Register Teacher";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-user-plus" style="margin-right:8px;vertical-align:-2px"></i>Register New Teacher</h2>
+
+<div class="card" style="max-width:600px">
+    <div class="card-body">
+        <form asp-action="Register" method="post" id="registerForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" style="margin-bottom:16px"></div>
+
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input asp-for="Teacher.FullName" class="form-control" placeholder="e.g., John Mwangi" />
+                <span asp-validation-for="Teacher.FullName" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">National ID</label>
+                <input asp-for="Teacher.NationalId" class="form-control" placeholder="e.g., 12345678" />
+                <span asp-validation-for="Teacher.NationalId" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Department</label>
+                <select asp-for="Teacher.DepartmentId" class="form-select" asp-items="@(new SelectList(Model.Departments, "Id", "Name"))">
+                    <option value="">-- Select Department --</option>
+                </select>
+                <span asp-validation-for="Teacher.DepartmentId" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email Address <span style="color:var(--text-muted);font-size:12px;font-weight:400">(optional — credential slip will be emailed)</span></label>
+                <input asp-for="Teacher.Email" class="form-control" placeholder="e.g., john.mwangi@school.ac.ke" type="email" />
+                <span asp-validation-for="Teacher.Email" style="font-size:12px;color:var(--red);margin-top:4px;display:block"></span>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:24px">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="ti ti-user-plus"></i> Register Teacher
+                </button>
+                <a asp-action="Index" class="btn btn-ghost" id="cancelBtn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);align-items:center;justify-content:center">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px 40px;text-align:center;min-width:300px;box-shadow:0 24px 60px rgba(0,0,0,.5)">
+        <div style="position:relative;width:64px;height:64px;margin:0 auto 24px">
+            <div style="position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:#3b82f6;animation:ldSpin 1s linear infinite"></div>
+            <div style="position:absolute;inset:6px;border-radius:50%;border:3px solid transparent;border-top-color:#6366f1;animation:ldSpin .75s linear infinite reverse"></div>
+            <div style="position:absolute;inset:12px;border-radius:50%;border:3px solid transparent;border-top-color:#8b5cf6;animation:ldSpin .5s linear infinite"></div>
+        </div>
+        <div style="font-weight:700;font-size:15px;color:var(--text-primary);margin-bottom:6px" id="loadingTitle">Registering Teacher...</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px" id="loadingSubtitle">Saving teacher details</div>
+        <div style="background:var(--bg-base);border-radius:999px;height:4px;overflow:hidden;width:100%">
+            <div id="loadingBar" style="height:100%;width:20%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:999px;transition:width .5s ease"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:10px" id="loadingStep">Step 1 of 4</div>
+    </div>
+</div>
+<style>
+    @@keyframes ldSpin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+<script>
+    document.getElementById('registerForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // Run browser validation first — show errors if invalid
+        if (!this.reportValidity()) return;
+
+        const form     = this;
+        const overlay  = document.getElementById('loadingOverlay');
+        const bar      = document.getElementById('loadingBar');
+        const title    = document.getElementById('loadingTitle');
+        const subtitle = document.getElementById('loadingSubtitle');
+        const step     = document.getElementById('loadingStep');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+
+        // Lock UI and show overlay
+        submitBtn.disabled = true;
+        cancelBtn.style.pointerEvents = 'none';
+        overlay.style.display = 'flex';
+
+        // Animate steps while server works
+        const steps = [
+            { width: '20%', title: 'Registering Teacher...',  sub: 'Saving teacher details',        step: 'Step 1 of 4', delay: 0    },
+            { width: '45%', title: 'Setting Credentials...',  sub: 'Generating username & password', step: 'Step 2 of 4', delay: 700  },
+            { width: '70%', title: 'Generating PDF Slip...',  sub: 'Preparing credential document',  step: 'Step 3 of 4', delay: 1600 },
+            { width: '88%', title: 'Almost Done...',          sub: 'Sending email if provided',      step: 'Step 4 of 4', delay: 2600 },
+        ];
+        const timers = steps.map(s => setTimeout(() => {
+            bar.style.width      = s.width;
+            title.textContent    = s.title;
+            subtitle.textContent = s.sub;
+            step.textContent     = s.step;
+        }, s.delay));
+
+        try {
+            // Submit via fetch with redirect:manual so TempData is NOT consumed
+            // by fetch's internal redirect-following — the real browser navigation
+            // will be the only thing that reads TempData
+            const response = await fetch(form.action, {
+                method:   'POST',
+                body:     new FormData(form),
+                redirect: 'manual'
+            });
+
+            // Clear animation timers
+            timers.forEach(clearTimeout);
+
+            if (response.type === 'opaqueredirect' || response.redirected || response.status === 0) {
+                // Server redirected to Credentials page — navigate there for real
+                // so TempData (success banner + PDF download) works correctly
+                bar.style.width      = '100%';
+                title.textContent    = 'Done!';
+                subtitle.textContent = 'Redirecting...';
+                step.textContent     = 'Complete';
+                setTimeout(() => {
+                    window.location.href = '@Url.Action("Index", "Credentials")';
+                }, 300);
+            } else if (response.ok) {
+                // Server returned HTML (validation errors) — write it back
+                const html = await response.text();
+                document.open(); document.write(html); document.close();
+            } else {
+                // Unexpected error
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
+                cancelBtn.style.pointerEvents = '';
+                alert('Something went wrong. Please try again.');
+            }
+        } catch (err) {
+            timers.forEach(clearTimeout);
+            overlay.style.display = 'none';
+            submitBtn.disabled = false;
+            cancelBtn.style.pointerEvents = '';
+        }
+    });
+</script>
+}

@@ -1,0 +1,55 @@
+@model BiometricAttendanceSystem.Models.ViewModels.MonthlyReportVM
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+
+    var monthName = Model?.MonthName ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("MMMM yyyy");
+    var summaries = Model?.Summaries ?? new List<BiometricAttendanceSystem.Models.ViewModels.MonthlyTeacherSummary>();
+
+    ViewBag.Title = $"Monthly Report – {monthName}";
+}
+
+<h1>Monthly Attendance Report</h1>
+<h2>@monthName</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Present</th>
+            <th>Late</th>
+            <th>Absent</th>
+            <th>Working Days</th>
+            <th>Attendance %</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            var i = 1;
+        }
+
+        @foreach (var s in summaries)
+        {
+            <tr>
+                <td>@(i++)</td>
+                <td>@(s?.Teacher?.FullName ?? "-")</td>
+                <td>@(s?.Teacher?.Department?.Name ?? "—")</td>
+                <td>@(s?.PresentDays ?? 0)</td>
+                <td>@(s?.LateDays ?? 0)</td>
+                <td>@(s?.AbsentDays ?? 0)</td>
+                <td>@(s?.WorkingDays ?? 0)</td>
+                <td>@(s?.AttendancePercentage ?? 0)%</td>
+            </tr>
+        }
+
+        @if (summaries == null || !summaries.Any())
+        {
+            <tr>
+                <td colspan="8" style="text-align:center;color:#666;padding:12px">
+                    No records found.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

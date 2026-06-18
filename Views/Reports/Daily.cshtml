@@ -1,0 +1,311 @@
+@using BiometricAttendanceSystem.Models
+@model BiometricAttendanceSystem.Models.ViewModels.DailyReportVM
+@{
+    ViewData["Title"] = "Daily Report";
+}
+
+<h2 style="margin-bottom:20px"><i class="ti ti-calendar-day" style="margin-right:8px"></i>Daily Report</h2>
+
+<div class="card" style="margin-bottom:20px;max-width:400px">
+    <div class="card-body">
+        <form id="dailyReportDateForm" method="get" style="display:flex;gap:12px;align-items:flex-end">
+            <div style="flex:1">
+                <label class="form-label">Select Date</label>
+                <div class="daily-date-entry">
+                    <input type="text"
+                           id="dailyDateDay"
+                           class="form-control daily-date-segment"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           maxlength="2"
+                           value="@Model.Date.ToString("dd")"
+                           aria-label="Day" />
+                    <span class="daily-date-separator">/</span>
+                    <input type="text"
+                           id="dailyDateMonth"
+                           class="form-control daily-date-segment"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           maxlength="2"
+                           value="@Model.Date.ToString("MM")"
+                           aria-label="Month" />
+                    <span class="daily-date-separator">/</span>
+                    <input type="text"
+                           id="dailyDateYear"
+                           class="form-control daily-date-segment daily-date-year"
+                           inputmode="numeric"
+                           autocomplete="off"
+                           maxlength="4"
+                           value="@Model.Date.ToString("yyyy")"
+                           aria-label="Year" />
+                    <input type="hidden"
+                           id="dailyDateValue"
+                           name="date"
+                           value="@Model.Date.ToString("yyyy-MM-dd")" />
+                    <button type="button"
+                            id="dailyDatePickerButton"
+                            class="btn btn-ghost daily-date-picker-button"
+                            title="Open calendar"
+                            aria-label="Open calendar">
+                        <i class="ti ti-calendar"></i>
+                    </button>
+                    <input type="date"
+                           id="dailyDateNativePicker"
+                           class="daily-date-native-picker"
+                           value="@Model.Date.ToString("yyyy-MM-dd")"
+                           tabindex="-1"
+                           aria-hidden="true" />
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <form asp-action="DownloadDailyPdf" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+        <button type="submit" class="btn btn-primary">
+            <i class="ti ti-file-pdf"></i> Download PDF
+        </button>
+    </form>
+    <form asp-action="DownloadDailyExcel" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+        <button type="submit" class="btn btn-success">
+            <i class="ti ti-file-xls"></i> Download Excel
+        </button>
+    </form>
+    <button type="button"
+            class="btn btn-ghost"
+            onclick="window.open('@Url.Action("PrintDailyPage","Reports", new { date = Model.Date.ToString("yyyy-MM-dd") })', '_blank')">
+        <i class="ti ti-printer"></i> Print
+    </button>
+</div>
+
+@if (Model.Records?.Count > 0)
+{
+    <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card green">
+            <div class="stat-icon"><i class="ti ti-user-check"></i></div>
+            <div class="stat-value">@Model.Records.Count(r => r.Status == AttendanceStatus.Present)</div>
+            <div class="stat-label">Present</div>
+        </div>
+        <div class="stat-card amber">
+            <div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div>
+            <div class="stat-value">@Model.Records.Count(r => r.Status == AttendanceStatus.Late)</div>
+            <div class="stat-label">Late</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-icon"><i class="ti ti-user-x"></i></div>
+            <div class="stat-value">@Model.Records.Count(r => r.Status == AttendanceStatus.Absent)</div>
+            <div class="stat-label">Absent</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Attendance Records — @Model.Date.ToString("dd MMMM yyyy")</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="att-table daily-report-table">
+                <colgroup>
+                    <col class="teacher-col" />
+                    <col class="tsc-col" />
+                    <col class="department-col" />
+                    <col class="time-col" />
+                    <col class="status-col" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Teacher</th>
+                        <th scope="col">National ID</th>
+                        <th scope="col">Department</th>
+                        <th scope="col">Check-In Time</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Records)
+                {
+                    <tr>
+                        <td>@r.Teacher?.FullName</td>
+                        <td class="tmono">@r.Teacher?.NationalId</td>
+                        <td><span class="dept-tag">@r.Teacher?.Department?.Name</span></td>
+                        <td class="tmono">@r.CheckInDisplay</td>
+                        <td><span class="badge @(r.Status switch { AttendanceStatus.Present => "badge-present", AttendanceStatus.Late => "badge-late", _ => "badge-absent" })">@r.Status</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning"><i class="ti ti-alert-circle"></i> No attendance records for this date.</div>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const form = document.getElementById("dailyReportDateForm");
+            const dayInput = document.getElementById("dailyDateDay");
+            const monthInput = document.getElementById("dailyDateMonth");
+            const yearInput = document.getElementById("dailyDateYear");
+            const hiddenInput = document.getElementById("dailyDateValue");
+            const nativePicker = document.getElementById("dailyDateNativePicker");
+            const pickerButton = document.getElementById("dailyDatePickerButton");
+            let selectedIso = hiddenInput.value;
+            let submitTimer;
+
+            const pad2 = value => value.toString().padStart(2, "0");
+
+            const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+            const setSegmentsFromIso = iso => {
+                const parts = iso.split("-");
+                if (parts.length !== 3) return;
+                yearInput.value = parts[0];
+                monthInput.value = parts[1];
+                dayInput.value = parts[2];
+            };
+
+            const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
+
+            const getMonth = () => {
+                const month = Number(monthInput.value);
+                return Number.isInteger(month) && month >= 1 && month <= 12 ? month : null;
+            };
+
+            const getYear = () => {
+                const year = Number(yearInput.value);
+                return yearInput.value.length === 4 && Number.isInteger(year) && year >= 1 ? year : null;
+            };
+
+            const getMaxDay = () => {
+                const month = getMonth();
+                const year = getYear();
+                if (!month) return 31;
+                return daysInMonth(year || new Date().getFullYear(), month);
+            };
+
+            const keepDigitsOnly = (input, maxLength) => {
+                const digits = input.value.replace(/\D/g, "").slice(0, maxLength);
+                if (input.value !== digits) input.value = digits;
+            };
+
+            const clampMonth = () => {
+                keepDigitsOnly(monthInput, 2);
+                if (!monthInput.value) return;
+                if (monthInput.value === "0") return;
+                if (monthInput.value.length < 2) return;
+
+                const month = clampNumber(Number(monthInput.value), 1, 12);
+                if (Number(monthInput.value) !== month) monthInput.value = pad2(month);
+            };
+
+            const clampDay = () => {
+                keepDigitsOnly(dayInput, 2);
+                if (!dayInput.value) return;
+                if (dayInput.value === "0") return;
+                if (dayInput.value.length < 2) return;
+
+                const day = clampNumber(Number(dayInput.value), 1, getMaxDay());
+                if (Number(dayInput.value) !== day) dayInput.value = pad2(day);
+            };
+
+            const parseDate = () => {
+                const year = getYear();
+                const month = getMonth();
+                const day = Number(dayInput.value);
+
+                if (!year || !month || !Number.isInteger(day)) return null;
+                if (day < 1 || day > daysInMonth(year, month)) return null;
+
+                return `${year.toString().padStart(4, "0")}-${pad2(month)}-${pad2(day)}`;
+            };
+
+            const maybeSubmit = () => {
+                const iso = parseDate();
+
+                if (iso && iso !== selectedIso) {
+                    submitDate(iso);
+                }
+            };
+
+            const submitDate = iso => {
+                hiddenInput.value = iso;
+                nativePicker.value = iso;
+                selectedIso = iso;
+                clearTimeout(submitTimer);
+                submitTimer = setTimeout(() => form.submit(), 250);
+            };
+
+            const selectSegment = input => {
+                input.classList.add("is-active");
+                window.setTimeout(() => input.select(), 0);
+            };
+
+            const leaveSegment = input => input.classList.remove("is-active");
+
+            dayInput.addEventListener("input", () => {
+                clampDay();
+                if (dayInput.value.length === 2) {
+                    monthInput.focus();
+                    monthInput.select();
+                }
+                maybeSubmit();
+            });
+
+            monthInput.addEventListener("input", () => {
+                clampMonth();
+                clampDay();
+                if (monthInput.value.length === 2) {
+                    yearInput.focus();
+                    yearInput.select();
+                }
+                maybeSubmit();
+            });
+
+            yearInput.addEventListener("input", () => {
+                keepDigitsOnly(yearInput, 4);
+                clampDay();
+                maybeSubmit();
+            });
+
+            [dayInput, monthInput, yearInput].forEach(input => {
+                input.addEventListener("focus", () => selectSegment(input));
+                input.addEventListener("click", () => selectSegment(input));
+                input.addEventListener("blur", () => {
+                    if (input === dayInput && dayInput.value === "0") dayInput.value = "01";
+                    if (input === monthInput && monthInput.value === "0") monthInput.value = "01";
+                    if (input === dayInput) clampDay();
+                    if (input === monthInput) clampMonth();
+                    leaveSegment(input);
+                    maybeSubmit();
+                });
+            });
+
+            pickerButton.addEventListener("click", () => {
+                if (typeof nativePicker.showPicker === "function") {
+                    try {
+                        nativePicker.showPicker();
+                        return;
+                    } catch {
+                        nativePicker.click();
+                        return;
+                    }
+                }
+
+                nativePicker.click();
+            });
+
+            nativePicker.addEventListener("change", () => {
+                if (!nativePicker.value || nativePicker.value === selectedIso) return;
+                setSegmentsFromIso(nativePicker.value);
+                submitDate(nativePicker.value);
+            });
+        })();
+    </script>
+}

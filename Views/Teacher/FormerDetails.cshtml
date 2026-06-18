@@ -1,0 +1,115 @@
+@using BiometricAttendanceSystem.Models
+@using BiometricAttendanceSystem.Models.ViewModels
+@model TeacherHistoryVM
+@{
+    ViewData["Title"] = $"{Model.Teacher.FullName} — Former Employee Records";
+}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h2><i class="ti ti-clock-history" style="margin-right:8px"></i>@Model.Teacher.FullName — Full Attendance History</h2>
+    <a asp-action="FormerEmployees" class="btn btn-ghost">
+        <i class="ti ti-arrow-left"></i> Back to Former Employees
+    </a>
+</div>
+
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <form asp-action="DownloadFormerEmployeePdf" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Teacher.Id" />
+        <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+        <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+        <button type="submit" class="btn btn-primary">
+            <i class="ti ti-file-pdf"></i> Download PDF
+        </button>
+    </form>
+    <form asp-action="DownloadFormerEmployeeExcel" method="post" style="display:inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Teacher.Id" />
+        <input type="hidden" name="from" value="@Model.From.ToString("yyyy-MM-dd")" />
+        <input type="hidden" name="to" value="@Model.To.ToString("yyyy-MM-dd")" />
+        <button type="submit" class="btn btn-success">
+            <i class="ti ti-file-xls"></i> Download Excel
+        </button>
+    </form>
+    <button type="button"
+            class="btn btn-ghost"
+            onclick="window.open('@Url.Action("PrintFormerDetails","Teacher", new { id = Model.Teacher.Id, from = Model.From.ToString("yyyy-MM-dd"), to = Model.To.ToString("yyyy-MM-dd") })', '_blank')">
+        <i class="ti ti-printer"></i> Print
+    </button>
+</div>
+
+<div class="stats-grid" style="margin-bottom:20px">
+    <div class="stat-card green">
+        <div class="stat-icon"><i class="ti ti-user-check"></i></div>
+        <div class="stat-value">@Model.PresentDays</div>
+        <div class="stat-label">Present Days</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-icon"><i class="ti ti-clock-exclamation"></i></div>
+        <div class="stat-value">@Model.LateDays</div>
+        <div class="stat-label">Late Days</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-icon"><i class="ti ti-user-x"></i></div>
+        <div class="stat-value">@Model.AbsentDays</div>
+        <div class="stat-label">Absent Days</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-icon"><i class="ti ti-percentage"></i></div>
+        <div class="stat-value">@Model.AttendancePercentage%</div>
+        <div class="stat-label">Attendance Rate</div>
+        <div class="progress-wrap"><div class="progress-bar-fill" style="width:@Model.AttendancePercentage%"></div></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">
+            <span class="card-title-icon"><i class="ti ti-calendar"></i></span>
+            Full records — @Model.Teacher.DateRegistered.ToString("dd MMM yyyy") to present
+        </span>
+        <span style="font-size:12px;color:var(--text-muted)">
+            <span class="badge badge-absent">Former Employee</span>
+        </span>
+    </div>
+    <div class="table-wrapper">
+        <table class="att-table history-table">
+            <colgroup>
+                <col class="date-col" />
+                <col class="time-col" />
+                <col class="status-col" />
+            </colgroup>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Check-In Time</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Records.OrderByDescending(x => x.Date))
+            {
+                <tr>
+                    <td>@r.Date.ToString("dd MMM yyyy (ddd)")</td>
+                    <td class="tmono">@r.CheckInDisplay</td>
+                    <td>
+                        <span class="badge @(r.Status switch {
+                            AttendanceStatus.Present => "badge-present",
+                            AttendanceStatus.Late    => "badge-late",
+                            _                        => "badge-absent"
+                        })">@r.Status</span>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Records.Any())
+            {
+                <tr>
+                    <td colspan="3" style="text-align:center;color:var(--text-muted);padding:24px">
+                        No attendance records found for this employee.
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

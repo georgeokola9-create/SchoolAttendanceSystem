@@ -1,0 +1,74 @@
+@model BiometricAttendanceSystem.Models.ViewModels.DailyReportVM
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+
+    var safeDate = Model?.Date ?? DateTime.Today;
+    var records = Model?.Records ?? new List<BiometricAttendanceSystem.Models.AttendanceRecord>();
+
+    ViewBag.Title = $"Daily Attendance – {safeDate:dddd, dd MMMM yyyy}";
+}
+
+<h1>Daily Attendance Report</h1>
+<h2>@safeDate.ToString("dddd, dd MMMM yyyy")</h2>
+
+<div class="summary-grid">
+    <div class="summary-box">
+        <div class="value">@(Model?.PresentCount ?? 0)</div>
+        <div class="label">Present</div>
+    </div>
+    <div class="summary-box">
+        <div class="value">@(Model?.LateCount ?? 0)</div>
+        <div class="label">Late</div>
+    </div>
+    <div class="summary-box">
+        <div class="value">@(Model?.AbsentCount ?? 0)</div>
+        <div class="label">Absent</div>
+    </div>
+    <div class="summary-box">
+        <div class="value">@(Model?.AttendancePercentage ?? 0)%</div>
+        <div class="label">Attendance</div>
+    </div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>National ID</th>
+            <th>Department</th>
+            <th>Check-In</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            var i = 1;
+        }
+
+        @foreach (var r in records)
+        {
+            <tr>
+                <td>@(i++)</td>
+                <td>@(r.Teacher?.FullName ?? "-")</td>
+                <td>@(r.Teacher?.NationalId ?? "-")</td>
+                <td>@(r.Teacher?.Department?.Name ?? "—")</td>
+                <td>@(r.CheckInDisplay ?? "-")</td>
+                <td>
+                    <span class="badge badge-@r.Status.ToString().ToLower()">
+                        @r.Status
+                    </span>
+                </td>
+            </tr>
+        }
+
+        @if (!records.Any())
+        {
+            <tr>
+                <td colspan="6" style="text-align:center;color:#666;padding:12px">
+                    No records found.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
